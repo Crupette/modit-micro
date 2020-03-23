@@ -1,0 +1,11 @@
+*.o
+*.ko
+*.d
+root/boot/kernel.bin
+root/boot/initrd.tar
+
+iso/boot/modit.bin
+iso/boot/initrd.tar
+
+tools/*
+*.iso

@@ -1,0 +1,81 @@
+diff -r -c binutils-2.32/bfd/config.bfd binutils-2.32-modified/bfd/config.bfd
+*** binutils-2.32/bfd/config.bfd	2019-01-19 11:01:32.000000000 -0500
+--- binutils-2.32-modified/bfd/config.bfd	2019-03-13 17:11:10.084959806 -0400
+***************
+*** 652,657 ****
+--- 652,661 ----
+      targ_selvecs=
+      targ64_selvecs=x86_64_elf64_vec
+      ;;
++   i[3-7]86-*-modit*)
++     targ_defvec=i386_elf32_vec
++     targ_selvecs=
++     ;;
+  #ifdef BFD64
+    x86_64-*-cloudabi*)
+      targ_defvec=x86_64_elf64_cloudabi_vec
+diff -r -c binutils-2.32/config.sub binutils-2.32-modified/config.sub
+*** binutils-2.32/config.sub	2019-01-19 11:01:33.000000000 -0500
+--- binutils-2.32-modified/config.sub	2019-03-13 17:11:09.388939926 -0400
+***************
+*** 1342,1347 ****
+--- 1342,1348 ----
+  	     | sym* | kopensolaris* | plan9* \
+  	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
+  	     | aos* | aros* | cloudabi* | sortix* \
++ 	     | modit* \
+  	     | nindy* | vxsim* | vxworks* | ebmon* | hms* | mvs* \
+  	     | clix* | riscos* | uniplus* | iris* | isc* | rtu* | xenix* \
+  	     | knetbsd* | mirbsd* | netbsd* \
+diff -r -c binutils-2.32/gas/configure.tgt binutils-2.32-modified/gas/configure.tgt
+*** binutils-2.32/gas/configure.tgt	2019-01-19 11:01:33.000000000 -0500
+--- binutils-2.32-modified/gas/configure.tgt	2019-03-13 17:11:08.736921303 -0400
+***************
+*** 260,265 ****
+--- 260,266 ----
+    i386-*-chaos)				fmt=elf ;;
+    i386-*-rdos*)				fmt=elf ;;
+    i386-*-darwin*)			fmt=macho ;;
++   i386-*-modit*)			fmt=elf ;;
+  
+    ia16-*-elf*)				fmt=elf ;;
+  
+diff -r -c binutils-2.32/ld/configure.tgt binutils-2.32-modified/ld/configure.tgt
+*** binutils-2.32/ld/configure.tgt	2019-01-19 11:01:33.000000000 -0500
+--- binutils-2.32-modified/ld/configure.tgt	2019-03-13 17:11:08.132904047 -0400
+***************
+*** 363,368 ****
+--- 363,369 ----
+  i[3-7]86-*-vxworks*)	targ_emul=elf_i386_vxworks ;;
+  i[3-7]86-*-chaos)	targ_emul=elf_i386_chaos
+  			;;
++ i[3-7]86-*-modit*)	targ_emul=elf_i386 ;;
+  i[3-7]86-*-nacl*)	targ_emul=elf_i386_nacl
+  			targ_extra_emuls="armelf_nacl armelfb_nacl"
+  			targ_extra_libpath=$targ_extra_emuls
+***************
+*** 806,811 ****
+--- 806,815 ----
+    NATIVE_LIB_DIRS='/usr/local/lib $$INTERIX_ROOT/usr/lib /lib /usr/lib'
+    ;;
+
++ i[3-7]86-*-modit)
++   NATIVE_LIB_DIRS='/lib /usr/lib'
++   ;;
++ 
+  ia64-*-aix*)
+    NATIVE_LIB_DIRS='/usr/local/lib /usr/lib/ia64l64 /lib /usr/lib'
+    ;;
+diff -r -c binutils-2.32/ld/emulparams/elf_i386.sh binutils-2.32-modified/ld/emulparams/elf_i386.sh
+*** binutils-2.32/ld/emulparams/elf_i386.sh	2019-01-19 11:01:33.000000000 -0500
+--- binutils-2.32-modified/ld/emulparams/elf_i386.sh	2019-03-13 17:11:07.228878220 -0400
+***************
+*** 34,37 ****
+--- 34,40 ----
+  	;;
+      esac
+      ;;
++ 	i[3-7]86-*-modit*)
++ 	 TEXT_START_ADDR=0x1000
++ 	 ;;
+  esac
