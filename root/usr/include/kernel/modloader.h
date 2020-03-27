@@ -1,5 +1,5 @@
 /*	MODLOADER.H -	Simple module loader, loading relocatable ELF objects
- *			Maps new modules to 0xD0000000
+ *			Maps new modules to 0xD8000000
  *			Links against the kernel and module dependencies
  *
  *	Author: Crupette
@@ -11,6 +11,19 @@
 #include "elf.h"
 #include "kernel/initrd.h"
 
+#define MODULES_START 0xD8000000
+
+typedef struct module_info {
+	char *name;
+
+	struct elf32_shdr *sheaders;
+	struct elf32_sym *symtab;
+	char *strtab;
+
+	int (*enter)(void);
+	int (*exit)(void);
+} module_info_t;
+
 #define module_name(name) \
 	char* _module_name = #name
 
@@ -21,7 +34,7 @@
 	void* _module_unload = unload
 
 #define module_depends(mod) \
-	char _module_depends_ ## mod [] __attribute__((section("moddeps"), used)) = #mod
+	char *_module_depends_ ## mod __attribute__((section(".moddeps"), used)) = #mod
 
 
 /*	Initializes the module loader

@@ -74,7 +74,7 @@ static void pmm_init(multiboot_info_t *mbinfo){
 	extern uintptr_t _end;
 
 	//Kernel pages need to be kept safe
-	for(uintptr_t i = (uintptr_t)(&_begin); i < (uintptr_t)(&_end); i += 4096){
+	for(uintptr_t i = (uintptr_t)(&_begin); i < (uintptr_t)(&_end) + 0x10000; i += 4096){
 		kpmm_resvpg((void*)(i - VIRT_BASE));
 	}
 	(void)kpmm_getpg();

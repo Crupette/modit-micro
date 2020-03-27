@@ -5,6 +5,8 @@
 #include <string.h>
 
 uintptr_t mod_nextfree;
+module_info_t *modules[32];
+uintptr_t modules_list_size;
 
 static elf_shdr_t *k_symtab_ent;
 static elf_shdr_t *k_strtab_ent;
@@ -63,7 +65,8 @@ void kmod_init(multiboot_info_t *mbinfo){
 
 	//This address is where new modules will be placed. After this, the number will be incremented by
 	//the space taken up by said module
-	mod_nextfree = 0xD8000000;
+	mod_nextfree = MODULES_START;
+	modules_list_size = 0;
 
 	uint32_t filecount = 0;
 	initrd_file_t *files = initrd_get_files(&filecount);
@@ -115,7 +118,7 @@ void kmod_load(initrd_file_t *file){
 		   shdr->sh_type == SHT_STRTAB){
 			uint32_t align = shdr->sh_addralign - 1;
 			newalloc = ((newalloc >> align) + 1) << align;
-			vga_printf("Loading section [%s] into addr %p -> %p (%x)\n", name, newalloc, newalloc + shdr->sh_size, shdr->sh_addralign);
+			//vga_printf("Loading section [%s] into addr %p -> %p (%x)\n", name, newalloc, newalloc + shdr->sh_size, shdr->sh_addralign);
 			for(int i = newalloc; i < newalloc + shdr->sh_size; i += 4096){
 				kvmm_allocpg((void*)i);
 			}
@@ -135,11 +138,18 @@ void kmod_load(initrd_file_t *file){
 	mod_nextfree = newalloc;
 
 	if(symtab == 0 || strtab == 0){
-		vga_printf("[ERR]: Module symtab %p, strtab %p\n", symtab, strtab);
+		vga_printf("[ERR]: %s symtab %p, strtab %p\n", file->name, symtab, strtab);
+		return;
 	}
 
-	elf_sym_t *symtab_actual = (elf_sym_t*)((uintptr_t)file_raw + symtab->sh_offset);
-	char *strtab_actual = (char*)((uintptr_t)file_raw + strtab->sh_offset);
+	elf_sym_t *symtab_actual = (elf_sym_t*)symtab->sh_addr;
+	char *strtab_actual = (char*)strtab->sh_addr;
+
+	module_info_t *module = &modules[modules_list_size++];
+	module->sheaders = shdrs;
+	module->symtab = symtab_actual;
+	module->strtab = strtab_actual;
+	//TODO: Parse dependencies
 
 	//Process relocatables
 	for(uint16_t i = 0; i < header->e_shnum; i++){
@@ -150,9 +160,9 @@ void kmod_load(initrd_file_t *file){
 			elf_shdr_t *relsec = &shdrs[shdr->sh_info];
 			//Do not relocate symbols in an un-loaded section
 			if(relsec->sh_flags == 0) continue;
-			vga_printf("Section %s is relocating for %s\n",
-					(char*)((uintptr_t)shdr->sh_name + (uintptr_t)shstrtab),
-					(char*)((uintptr_t)relsec->sh_name + (uintptr_t)shstrtab));
+			//vga_printf("Section %s is relocating for %s\n",
+			//		(char*)((uintptr_t)shdr->sh_name + (uintptr_t)shstrtab),
+			//		(char*)((uintptr_t)relsec->sh_name + (uintptr_t)shstrtab));
 			for(int j = 0; j < shdr->sh_size / shdr->sh_entsize; j++){
 				uint16_t relsymi = ELF32_R_SYM(rels[j].r_info);
 				elf_sym_t *relsym = &symtab_actual[relsymi];
@@ -182,21 +192,17 @@ void kmod_load(initrd_file_t *file){
 				switch(ELF32_R_TYPE(rels[j].r_info)){
 					case R_386_NONE:
 						vga_printf("Relocation in %s (%i) is invalid!\n",
-							(char*)((uintptr_t)shdr->sh_name + (uintptr_t)shstrtab),
+							(char*)((uintptr_t)shdr->sh_name + 
+								(uintptr_t)shstrtab),
 							i);
 					break;
 					case R_386_32:
-						vga_printf("R386_32 Relocating sym %s [%p] (%p) to ", 
-								relsymname, *relocat, relocat);
 						*relocat = symval + *relocat;
 					break;
 					case R_386_PC32:
-						vga_printf("R386_PC32 Relocating sym %s [%p] (%p) to ", 
-								relsymname, *relocat, relocat);
 						*relocat = (symval + *relocat) - (relsec->sh_addr + rels[j].r_offset);
 					break;
 				}
-				vga_printf("%p\n", *relocat);
 
 			}
 		}
@@ -206,29 +212,51 @@ void kmod_load(initrd_file_t *file){
 	for(int i = 0; i < symtab->sh_size / symtab->sh_entsize; i++){
 		elf_sym_t *sym = &symtab_actual[i];
 		char *symname = (char*)((uintptr_t)strtab_actual + sym->st_name);
+		
+		if(sym->st_shndx > 0xFFF) continue;
+		sym->st_value = shdrs[sym->st_shndx].sh_addr + sym->st_value;
 
 		//We need to treat this differently, and I want to not copy code
 		if(strcmp(symname, "_module_name") == 0 ||
 		   strcmp(symname, "_module_load") == 0 ||
 		   strcmp(symname, "_module_unload") == 0){
 			elf_shdr_t *sym_target = &shdrs[sym->st_shndx];
-			void *value = (void*)(sym_target->sh_addr + sym->st_value);
+			void *value = (void*)sym->st_value;
 
 			if(strcmp(symname, "_module_name") == 0){
 				char *name = (char*)(*((uintptr_t*)value));
-				vga_printf("Found module name: [%s] (%p)\n", name, name);
+				module->name = name;
 			}
 
 			if(strcmp(symname, "_module_load") == 0){
 				void *ptr = (void*)(*((uintptr_t*)value));
-				vga_printf("Found entry: %p\n", ptr);
+				module->enter = ptr;
 			}
 
 			if(strcmp(symname, "_module_unload") == 0){
 				void *ptr = (void*)(*((uintptr_t*)value));
-				vga_printf("Found exit: %p\n", ptr);
+				module->exit = ptr;
 			}
 		}
 	}
+
+	if(module->name == 0){
+		vga_printf("Module in file [%s] is missing a name definition!\n", file->name);
+		return;
+	}
+	if(module->enter == 0){
+		vga_printf("Module [%s] has no entry point!\n \
+				Define this using the macro [module_load] \
+				with a pointer to the entry function\n", module->name);
+		return;
+	}
+	if(module->exit == 0){
+		vga_printf("Module [%s] has no exit point!\n \
+				Define this using the macro [module_unload] \
+				with a pointer to the exit function\n", module->name);
+		return;
+	}
+
+	vga_printf("Module %s executed with code %i\n", module->name, module->enter());
 }
 

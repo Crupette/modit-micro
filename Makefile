@@ -39,12 +39,11 @@ kernel: $(KRNLOBJS) | tools/
 	$(KCC) -T linker.ld -o $(SYSROOT)/boot/kernel.bin -ffreestanding -O2 -nostdlib $(KRNLDIR)/loader.o $(KRNLOBJS)
 
 mods: $(MODS)
-$(MODS) : Makefile tools/ initrd
+$(MODS) : Makefile tools/
 	$(MAKE) -C $@
 
-initrd: mods
-	#rm $(ISODIR)/boot/initrd.tar
-	cd initrd ; tar -cf ../root/boot/initrd.tar *
+initrd: mods | Makefile tools/
+	cd initrd && tar -cvf ../root/boot/initrd.tar *
 
 tools:
 	util/buildtools.sh
@@ -52,6 +51,7 @@ tools:
 clean:
 	rm -f $(RUNDIR)/modetos.iso
 	rm -f $(KRNLOBJS) $(KRNLDIR)/loader.o
+	rm -f initrd/*
 
 run:
 	qemu-system-i386 -cdrom run/moditos.iso -s -serial stdio
