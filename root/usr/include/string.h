@@ -17,5 +17,12 @@ size_t strlen(const char *s);
  * */
 int strcmp(const char *s1, const char *s2);
 
+/*	Checks if string [hs] contains full string [n]
+ * */
+char *strstr(const char *hs, const char *n);
+
+/*	Copies a string from [src] to [dest]
+ * */
+char *strcpy(char *dest, const char *src);
 
 #endif

@@ -121,6 +121,7 @@ struct elf32_shdr {
 
 #define SHN_UNDEF		0
 #define SHN_ABS			0xFFF1
+#define SHN_COMMON		0xFFF2
 
 struct elf32_chdr {
 	uint32_t ch_type;	//Specifies compression algorithm.

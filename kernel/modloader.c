@@ -1,11 +1,12 @@
 #include "kernel/modloader.h"
 #include "kernel/memory.h"
 #include "kernel/print.h"
+#include "kernel/io.h"
 
 #include <string.h>
 
 uintptr_t mod_nextfree;
-module_info_t *modules[32];
+module_info_t modules[32];
 uintptr_t modules_list_size;
 
 static elf_shdr_t *k_symtab_ent;
@@ -67,6 +68,7 @@ void kmod_init(multiboot_info_t *mbinfo){
 	//the space taken up by said module
 	mod_nextfree = MODULES_START;
 	modules_list_size = 0;
+	memset(modules, 0, sizeof(modules));
 
 	uint32_t filecount = 0;
 	initrd_file_t *files = initrd_get_files(&filecount);
@@ -86,16 +88,71 @@ void kmod_init(multiboot_info_t *mbinfo){
 	}
 }
 
-void kmod_load(initrd_file_t *file){
+static void load_dependency(module_info_t *module, char *dep){
+	for(int i = 0; i < modules_list_size; i++){
+		module_info_t *omod = &modules[i];
+		if(strcmp(omod->name, dep) == 0){
+			modules->deplist[module->deps++] = i;
+			return;
+		}
+	}
+	char namebuf[128];
+	memset(namebuf, 0, 128);
+	strcpy(namebuf, dep);
+	strcpy(namebuf + strlen(dep), ".ko");
+	vga_printf("Attempting to load dependency [%s] using [%s]\n", dep, namebuf);
+
+	uint32_t filecount = 0;
+	initrd_file_t *files = initrd_get_files(&filecount);
+	for(initrd_file_t *file = files; file < &files[filecount - 1]; file++){
+		if(strcmp(file->name, namebuf) == 0){
+			unsigned int loaded = kmod_load(file);
+			if(loaded == -1){
+				vga_printf("Module dependency [%s] failed to load\n", dep);
+				return;
+			}
+			modules->deplist[module->deps++] = loaded;
+			return;
+		}
+	}
+	vga_printf("Failed to load module dependency [%s]\n", dep);
+}
+
+static elf_sym_t *mod_findsym(module_info_t *mod, const char *name){
+	elf_sym_t *ksym = get_ksym(name);
+	if(ksym == NULL){
+		//We need to look in the dependencies.
+		for(int i = 0; i < mod->deps; i++){
+			module_info_t *depmod = &modules[i];
+			
+			elf_sym_t *symtab = depmod->symtab;
+			char *symstrtab = depmod->strtab;
+
+			for(elf_sym_t *depsym = symtab; 
+					(uintptr_t)depsym < depmod->symtab_hdr->sh_size;
+					depsym++){
+				vga_printf("Dependency has symbol [%s] @ %x\n", 
+						&symstrtab[depsym->st_name], depsym->st_value);
+			}
+		}
+	}
+}
+
+unsigned int kmod_load(initrd_file_t *file){
+	vga_printf("Attempting load of file %s\n", file->name);
+	for(int i = 0; i < modules_list_size; i++){
+		if(modules[i].file == file) return i;
+	}
+	
 	uint8_t *file_raw = file->data_start;
 	uint32_t file_size = file->size;
 	
-	if(file_size == 0) return;
-	if(file_raw == 0) return;
+	if(file_size == 0) return -1;
+	if(file_raw == 0) return -1;
 
 	elf_ehdr_t *header = (elf_ehdr_t*)file_raw;
-	if(ELF_CHKHDR(header) == false) return;
-	if(header->e_type != ET_REL) return;
+	if(ELF_CHKHDR(header) == false) return -1;
+	if(header->e_type != ET_REL) return -1;
 
 	elf_shdr_t *shdrs = (elf_shdr_t*)((uintptr_t)file_raw + header->e_shoff);
 	uint8_t *shstrtab = (uint8_t*)((uintptr_t)file_raw + shdrs[header->e_shstrndx].sh_offset);
@@ -108,6 +165,7 @@ void kmod_load(initrd_file_t *file){
 	for(uint16_t i = 0; i < header->e_shnum; i++){
 		elf_shdr_t *shdr = &shdrs[i];
 		char *name = (char*)((uintptr_t)shdr->sh_name + (uintptr_t)shstrtab);
+		vga_printf("Shdrname @ %p\n", name);
 		if(strcmp(name, ".symtab") == 0)
 			symtab = shdr;
 		if(strcmp(name, ".strtab") == 0)
@@ -116,12 +174,13 @@ void kmod_load(initrd_file_t *file){
 		if(shdr->sh_flags & SHF_ALLOC ||
 		   shdr->sh_type == SHT_SYMTAB ||
 		   shdr->sh_type == SHT_STRTAB){
-			uint32_t align = shdr->sh_addralign - 1;
-			newalloc = ((newalloc >> align) + 1) << align;
-			//vga_printf("Loading section [%s] into addr %p -> %p (%x)\n", name, newalloc, newalloc + shdr->sh_size, shdr->sh_addralign);
-			for(int i = newalloc; i < newalloc + shdr->sh_size; i += 4096){
+			uint32_t align = shdr->sh_addralign;
+			while(newalloc % align != 0) newalloc++;
+			vga_printf("Loading section [%s] into addr %p -> %p (%x)\n", name, newalloc, newalloc + shdr->sh_size, shdr->sh_size);
+			for(int i = newalloc; i < newalloc + shdr->sh_size + 4096; i += 4096){
 				kvmm_allocpg((void*)i);
 			}
+			vga_printf("Pages allocated\n");
 			shdr->sh_addr = newalloc;
 
 			if(shdr->sh_type == SHT_NOBITS){
@@ -131,12 +190,13 @@ void kmod_load(initrd_file_t *file){
 			     		(void*)((uintptr_t)file_raw + shdr->sh_offset),
 			     		shdr->sh_size);
 			}
+			vga_printf("Memory loaded\n");
 
 			newalloc += (shdr->sh_size - 1);
 		}
+		vga_printf("Done load\n");
 	}
 	mod_nextfree = newalloc;
-
 	if(symtab == 0 || strtab == 0){
 		vga_printf("[ERR]: %s symtab %p, strtab %p\n", file->name, symtab, strtab);
 		return;
@@ -145,11 +205,30 @@ void kmod_load(initrd_file_t *file){
 	elf_sym_t *symtab_actual = (elf_sym_t*)symtab->sh_addr;
 	char *strtab_actual = (char*)strtab->sh_addr;
 
+	unsigned int id = modules_list_size;
 	module_info_t *module = &modules[modules_list_size++];
+	module->file = file;
 	module->sheaders = shdrs;
 	module->symtab = symtab_actual;
 	module->strtab = strtab_actual;
+
+	module->symtab_hdr = symtab;
+	module->strtab_hdr = strtab;
 	//TODO: Parse dependencies
+	
+	for(elf_sym_t *sym = symtab_actual; 
+			(uintptr_t)sym < symtab->sh_addr + symtab->sh_size; 
+			sym++){
+		if(sym->st_shndx > 0xFFF) continue;
+		char *symname = &strtab_actual[sym->st_name];
+		char *hdrname = (char*)(
+				shdrs[(uintptr_t)sym->st_shndx].sh_name + (uintptr_t)shstrtab);
+		if(strcmp(hdrname, ".moddeps") == 0){
+			if(strstr(symname, "_module_depends_") != NULL){
+				load_dependency(module, symname + strlen("_module_depends_"));
+			}
+		}
+	}
 
 	//Process relocatables
 	for(uint16_t i = 0; i < header->e_shnum; i++){
@@ -168,27 +247,44 @@ void kmod_load(initrd_file_t *file){
 				elf_sym_t *relsym = &symtab_actual[relsymi];
 				char *relsymname = (char*)((uintptr_t)strtab_actual + relsym->st_name);
 				uint32_t symval = relsym->st_value;
+				uint32_t *relocat = (uint32_t*)((uintptr_t)relsec->sh_addr + rels[j].r_offset);
 
+				if(ELF32_ST_TYPE(relsym->st_info) == STT_SECTION){
+					elf_shdr_t *relsec = &shdrs[relsym->st_shndx];
+					symval = relsec->sh_addr;
+				}else
 				//Symbol is not in file
 				if(relsym->st_shndx == SHN_UNDEF){
-					elf_sym_t *ksym = get_ksym(relsymname);
-					if(ksym == 0){
-						vga_printf("Could not find symbol %s in kernel\n", relsymname);
-						vga_printf("Load failed!\n");
-						return;
+					elf_sym_t *newsym = mod_findsym(module, relsymname);
+					if(newsym == 0){
+						//vga_printf("Could not find symbol [%s] in the kernel or the module's dependencies!\n",
+								//relsymname);
+						return -1;
 					}
-					symval = ksym->st_value;
+					symval = newsym->st_value;
 				}else{
 					if(relsym->st_shndx == SHN_ABS){
+						//Symbol is an absolute
+						//vga_printf("ABS sym @ %p (%x)\n", relocat,
+						//		relsym->st_value);
 						symval = relsym->st_value;
+					}else
+					if(relsym->st_shndx == SHN_COMMON){
+						//vga_printf("Sym [%s] requested illegal relocation\n",
+								//relsymname);
+						return -1;
 					}else{
 						elf_shdr_t *symtgt = &shdrs[relsym->st_shndx];
+						//vga_printf("Sym [%s] Type %i Target @ %x (%i) reloc %x\n", 
+						//		relsymname, relsym->st_info,
+						//		symtgt->sh_addr,
+						//		relsym->st_shndx,
+						//		relocat);
 						symval = symtgt->sh_addr + relsym->st_value;
 					}
 				}
-
-				uint32_t *relocat = (uint32_t*)((uintptr_t)relsec->sh_addr + rels[j].r_offset);
-
+				//vga_printf("Relocation %s at %p from %x", 
+				//		relsymname, relocat, *relocat);
 				switch(ELF32_R_TYPE(rels[j].r_info)){
 					case R_386_NONE:
 						vga_printf("Relocation in %s (%i) is invalid!\n",
@@ -197,13 +293,13 @@ void kmod_load(initrd_file_t *file){
 							i);
 					break;
 					case R_386_32:
-						*relocat = symval + *relocat;
+						*relocat = symval + (uintptr_t)(*relocat);
 					break;
 					case R_386_PC32:
-						*relocat = (symval + *relocat) - (relsec->sh_addr + rels[j].r_offset);
+						*relocat = (symval + (uintptr_t)(*relocat)) - (relsec->sh_addr + rels[j].r_offset);
 					break;
 				}
-
+				//vga_printf(" to %x\n", *relocat);
 			}
 		}
 	}
@@ -230,6 +326,7 @@ void kmod_load(initrd_file_t *file){
 
 			if(strcmp(symname, "_module_load") == 0){
 				void *ptr = (void*)(*((uintptr_t*)value));
+				vga_printf("Module entry %p\n", ptr);
 				module->enter = ptr;
 			}
 
@@ -242,21 +339,22 @@ void kmod_load(initrd_file_t *file){
 
 	if(module->name == 0){
 		vga_printf("Module in file [%s] is missing a name definition!\n", file->name);
-		return;
+		return -1;
 	}
 	if(module->enter == 0){
 		vga_printf("Module [%s] has no entry point!\n \
 				Define this using the macro [module_load] \
 				with a pointer to the entry function\n", module->name);
-		return;
+		return -1;
 	}
 	if(module->exit == 0){
 		vga_printf("Module [%s] has no exit point!\n \
 				Define this using the macro [module_unload] \
 				with a pointer to the exit function\n", module->name);
-		return;
+		return -1;
 	}
 
 	vga_printf("Module %s executed with code %i\n", module->name, module->enter());
+	return id;
 }
 

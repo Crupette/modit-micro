@@ -15,7 +15,7 @@ typedef struct gdt_entry {
 			uint8_t rw		: 1; //Readable / Writable
 			uint8_t dc		: 1; //Direction or conforming
 			uint8_t exec		: 1; //Usage of segment (code / data vs system)
-			
+			uint8_t s		: 1; //Descriptor type
 			uint8_t priv		: 2; //Privilege ring. 0-3
 			uint8_t present		: 1; //If the segment is valid
 		}__attribute__((packed));
@@ -45,12 +45,6 @@ typedef struct gdt_descriptor {
  *	flags:	More specialized flags
  *	return:	New GDT entry
  * */
-gdt_entry_t build_gdt(uint32_t base, uint32_t limit, uint8_t access, uint8_t flags);
-
-/*	Adds or changes a GDT entry from the table to one defined by [src]
- *	target:	Index in the table to place entry
- *	src:	Data to take from
- * */
-void add_gdt(unsigned int target, gdt_entry_t src);
+void add_gdt(uint8_t i, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags);
 
 #endif

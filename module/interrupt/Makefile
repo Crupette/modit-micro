@@ -12,7 +12,7 @@ ASM	:= nasm -f elf32
 
 CFLAGS	:= -std=gnu99 -ffreestanding -MMD -MP $(WARN) -I$(SYSROOT)/usr/include
 
-OUT	:= gdt.ko
+OUT	:= interrupt.ko
 
 all: $(OBJS)
 	$(LD) -r $^ -o $(OUT)

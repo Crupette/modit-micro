@@ -19,7 +19,7 @@ KLD		:= tools/bin/i686-pc-modit-ld
 WARNINGS	:= -Wall -Wextra -pedantic -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict -Wnull-dereference -Wdouble-promotion -Wshadow
 KCFLAGS		:= -std=gnu99 -ffreestanding -MMD -MP $(WARNINGS) -I$(SYSROOT)/usr/include -g -DBITS32
 
-.PHONY: all iso kernel mods initrd tools clean run
+.PHONY: all iso kernel mods $(MODS) initrd tools clean run
 
 all: | tools/
 
@@ -43,7 +43,7 @@ $(MODS) : Makefile tools/
 	$(MAKE) -C $@
 
 initrd: mods | Makefile tools/
-	cd initrd && tar -cvf ../root/boot/initrd.tar *
+	cd initrd ; tar -cvf ../root/boot/initrd.tar *
 
 tools:
 	util/buildtools.sh
