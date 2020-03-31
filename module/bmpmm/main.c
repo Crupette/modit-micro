@@ -14,14 +14,12 @@ uintptr_t pages_total = 0;
 
 uint32_t last_free = 0;
 
-static pmm_allocator_t allocator;
-
 #define BM_TEST(i)  (bitmap[i / 32] & (1 << (i % 32)))  //Tests if bit in bm is set, returns 1 if so
 #define BM_SET(i)   (bitmap[i / 32] |= (1 << (i % 32))) //Sets bit in bm index i to 1
 #define BM_UNSET(i) (bitmap[i / 32] &= ~(1 << (i % 32)))    //Sets bit in bm index i to 0
 
 static int32_t bm_seek_free(void) {
-    for(int i = 0; i < mapsize / 32; i++){
+    for(uint32_t i = 0; i < mapsize / 32; i++){
         if(bitmap[i] == 0xFFFFFFFF) continue;   //Section is full
         for(int j = 0; j < 32; j++){
             uint32_t bit = 1 << j;
@@ -29,6 +27,75 @@ static int32_t bm_seek_free(void) {
         }   
     }
     return -1;
+}
+
+static int32_t bm_get_free(void){
+    if(BM_TEST(last_free) == 0){
+        last_free++;
+        return last_free - 1;
+    }else{
+        last_free = bm_seek_free();
+        last_free++;
+        return last_free - 1;
+    }
+}
+
+static void *bm_getpg(void){
+    if(pages_taken >= pages_total){
+        vga_printf("[WARN]: Bitmap is full!\n");
+        return 0;
+    }
+    int free = bm_get_free();
+    if(free == -1) return 0;
+
+    BM_SET(free);
+    pages_free--;
+    pages_taken++;
+
+    uintptr_t freeptr = (free * 4096);
+    return (void*)freeptr;
+}
+
+static void bm_resvpg(void *ptr){
+    uint32_t page = (uintptr_t)ptr / 4096;
+    
+    if(BM_TEST(page) == 0){
+        pages_free--;
+        pages_taken++;
+    }
+    BM_SET(page);
+}
+
+static void bm_freepg(void *ptr){
+    uint32_t page = (uintptr_t)ptr / 4096;
+    
+    BM_UNSET(page);
+    pages_free++;
+    pages_taken--;
+}
+
+static void bm_addblock(void *start, uint16_t len){
+    uint16_t pindex = (uintptr_t)start / 4096;
+    for(uint16_t i = 0; i < len; i++){
+        if(BM_TEST(pindex) == 0){
+            pages_free--;
+            pages_taken++;
+        }
+        BM_SET(pindex);
+        pindex++;
+    }
+}
+
+static void bm_rmblock(void *start, uint16_t len){
+    uint16_t pindex = (uintptr_t)start / 4096;
+    for(uint16_t i = 0; i < len; i++){
+        if(BM_TEST(pindex)){
+            pages_free++;
+            pages_taken--;
+        }
+        BM_UNSET(pindex);
+        pindex++;
+    }
 }
 
 typedef struct multiboot_memory_map {
@@ -42,17 +109,14 @@ void _pmm_init(void){
     uintptr_t old_map_end = 0;
     uint32_t *old_bitmap = kcore_getbm(&old_map_start, &old_map_end);
 
-    uintptr_t mmap_firstfree = 0xFFFFFFFF;
-    uintptr_t mmap_lastfree = 0;
-
-    bitmap = krnl_next_free_pg;
+    bitmap = (uint32_t*)krnl_next_free_pg;
     //Allocates the bitmap  
     
     uintptr_t map_size = mbinfo->mem_upper * 1024;  //Memory size in KiB translated to bytes
     uintptr_t map_pages = ((map_size / 4096) / 4096) / 8;
 
-    for(int i = 0; i < map_pages + 1; i++){
-        virtual_allocator->allocpg(krnl_next_free_pg, false ,true);
+    for(uintptr_t i = 0; i < map_pages + 1; i++){
+        virtual_allocator->allocpg((void*)krnl_next_free_pg, false ,true);
         krnl_next_free_pg += 4096;
     }
 
@@ -75,9 +139,7 @@ void _pmm_init(void){
     }
     pages_total = map_size / 4096;
 
-    memcpy(bitmap, old_bitmap, old_map_end < map_size ? 
-            pages_total / 8 : 
-            (old_map_end / 4096) / 8);
+    memcpy(bitmap, old_bitmap, (old_map_end / 4096) / 4);
 
     for(uint32_t i = 0; i < pages_total; i++){
         if(BM_TEST(i)){
@@ -86,6 +148,13 @@ void _pmm_init(void){
             pages_free++;
         }
     }
+
+    physical_allocator->addblock = bm_addblock;
+    physical_allocator->rmblock = bm_rmblock;
+    physical_allocator->getpg = bm_getpg;
+    physical_allocator->freepg = bm_freepg;
+    physical_allocator->resvpg = bm_resvpg;
+
     vga_printf("[OK]: Bitmap PMM Setup: %i free, %i taken, %i total\n",
             pages_free, pages_taken, pages_total);
 }

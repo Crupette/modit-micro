@@ -145,6 +145,7 @@ static void kpmm_resvpg(void *ptr){
 uint32_t *kcore_getbm(uintptr_t *start, uintptr_t *end){
     *start = map_start;
     *end = map_end;
+
     return bitmap;
 }
 
