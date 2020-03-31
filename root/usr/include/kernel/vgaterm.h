@@ -1,3 +1,8 @@
+/*	VGATERM.H -	Debug printing interface for VGA 80x25 text console
+ *
+ *	Author:	Crupette
+ * */
+
 #ifndef VGATERM_H
 #define VGATERM_H
 

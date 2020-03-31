@@ -2,6 +2,7 @@
 #include "kernel/memory.h"
 #include "kernel/print.h"
 
+extern multiboot_info_t *mbinfo;
 
 static uint32_t file_count = 0;
 static initrd_file_t *file_list = 0;
@@ -27,7 +28,6 @@ static void parse_tar(multiboot_module_t *mod){
 	for(tar_files = 0; ; tar_files++){
 		tar_header_t *header = (tar_header_t*)addr;
 		if(header->name[0] == 0) break;
-		vga_printf("Found file w name %s\n", header->name);
 
 		uint32_t size = get_file_size((char*)(header->size));
 		addr += ((size / 512) + 1) * 512;
@@ -40,7 +40,7 @@ static void parse_tar(multiboot_module_t *mod){
 		return;
 	}
 
-	file_list = kvmm_allocpg((void*)(krnl_next_free_pg));
+	file_list = virtual_allocator->allocpg((void*)(krnl_next_free_pg), false, true);
 	krnl_next_free_pg += 0x1000;
 
 	addr = mod->mod_start + VIRT_BASE;
@@ -51,6 +51,7 @@ static void parse_tar(multiboot_module_t *mod){
 
 		uint32_t size = get_file_size((char*)(header->size));
 
+		vga_printf("File with name [%s] found\n", header->name);
 		file_list[i].name = header->name;
 		file_list[i].header_start = (uint8_t*)header;
 		file_list[i].data_start = file_list[i].header_start + 512;
@@ -68,7 +69,7 @@ initrd_file_t *initrd_get_files(uint32_t *n){
 	return file_list;
 }
 
-void initrd_init(multiboot_info_t *mbinfo){
+void initrd_init(){
 	//The 3rd flag tells whether there are modules present
 	if((mbinfo->flags) & (1 << 3)){
 		multiboot_module_t *mod;
@@ -77,8 +78,8 @@ void initrd_init(multiboot_info_t *mbinfo){
 			i < mbinfo->mods_count;
 			i++, mod++){
 			//Module needs to be preserved, so it is not overridden by other allocations
-			for(uint32_t j = mod->mod_start; j < mod->mod_end; j += 4096){
-				kpmm_resvpg((void*)j);
+			for(uint32_t j = mod->mod_start; j < mod->mod_end + 4096; j += 4096){
+				physical_allocator->resvpg((void*)j);
 			}
 			//First module is always presumed to be the initrd.
 			if(i == 0){	

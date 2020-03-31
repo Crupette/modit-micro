@@ -12,18 +12,26 @@
 extern uint32_t _begin;
 extern uint32_t _end;
 
-/*	Initializes the kernel, then passes control to kernel modules
+multiboot_info_t *mbinfo = 0;
+
+/*  Initializes the kernel, then passes control to kernel modules
  * */
-void kernel_main(multiboot_info_t *mbinfo, int magic){
-	mbinfo = (multiboot_info_t*)(((uint32_t)mbinfo) + VIRT_BASE);
-	vgaterm_init();
+void kernel_main(multiboot_info_t *mbi, int magic){
+    mbi = (multiboot_info_t*)(((uint32_t)mbi) + VIRT_BASE);
+    mbinfo = mbi;
 
-	if(magic != MULTIBOOT_BOOTLOADER_MAGIC){
-		vgaterm_putstr("[ERR]: Multiboot info not passed\n");
-		return;
-	}
+    vgaterm_init();
 
-	kmem_init(mbinfo);
-	initrd_init(mbinfo);
-	kmod_init(mbinfo);
+    if(magic != MULTIBOOT_BOOTLOADER_MAGIC){
+        vgaterm_putstr("[ERR]: Multiboot info not passed\n");
+        return;
+    }
+
+    kmem_init();
+    initrd_init();
+    kmod_init();
+
+    //This should not return:
+    //  Modules will be loaded, which will include a process manager and idle process
+    //  This idle process will take-over the kernel context
 }

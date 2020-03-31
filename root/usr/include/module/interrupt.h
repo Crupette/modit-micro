@@ -1,3 +1,10 @@
+/*  INTERRUPT.H -   Module interface for a general interrupt handler.
+ *          Provides structures and functions to define and setup all 256 possible
+ *          interrupts, and replace interrupt calls with other handlers
+ *
+ *  Author: Crupette
+ * */
+
 #ifndef MOD_INTERRUPT_H
 #define MOD_INTERRUPT_H 1
 
@@ -8,44 +15,52 @@
 #define IRQ_DISABLE asm volatile("cli")
 
 typedef struct idt_entry {
-	uint16_t offset_low;	//Lowest part of function
-	uint16_t selector;	//Selector of interrupt function
-	uint8_t zero;		//Has to be 0, unused
-	union {
-		uint8_t flags;
-		struct {
-			uint8_t type	: 4;	//Gate type
-			uint8_t ss	: 1;	//Storage segment
-			uint8_t dpl	: 2;	//Descriptor Privilege Level
-			uint8_t present : 1;	//Is interrupt valid
-		}__attribute__((packed));
-	};
-	uint16_t offset_high;
+    uint16_t offset_low;    //Lowest part of function
+    uint16_t selector;  //Selector of interrupt function
+    uint8_t zero;       //Has to be 0, unused
+    union {
+        uint8_t flags;
+        struct {
+            uint8_t type    : 4;    //Gate type
+            uint8_t ss  : 1;    //Storage segment
+            uint8_t dpl : 2;    //Descriptor Privilege Level
+            uint8_t present : 1;    //Is interrupt valid
+        }__attribute__((packed));
+    };
+    uint16_t offset_high;
 } __attribute__((packed)) idt_entry_t;
 
 typedef struct idt_ptr {
-	uint16_t size;
-	uintptr_t addr;
+    uint16_t size;
+    uintptr_t addr;
 } __attribute__((packed)) idt_ptr_t;
 
 typedef void (*int_handler_t)();
 
 typedef struct interrupt_state {
-	uint32_t gs, fs, es, ds;
-	uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
-	uint32_t num, err;
-	uint32_t eip, cs, eflags, usresp, ss;
+    uint32_t gs, fs, es, ds;
+    uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
+    uint32_t num, err;
+    uint32_t eip, cs, eflags, usresp, ss;
 } interrupt_state_t;
 
-/*	Creates a new IDT entry based on passed arguments
- *	i:	  Interrupt index
- *	func:	  Pointer to interrupt handler function
- *	selector: Selector of interrupt function
- *	flags:	  Extra interrupt flags
+typedef void (*isr_handler_t)(interrupt_state_t*);
+
+/*  Creates a new IDT entry based on passed arguments
+ *  i:    Interrupt index
+ *  func:     Pointer to interrupt handler function
+ *  selector: Selector of interrupt function
+ *  flags:    Extra interrupt flags
  * */
 void idt_createEntry(uint8_t i, int_handler_t func, uint16_t selector, uint8_t flags);
 
-/*	Loads the current IDT in the current processor
+/*  Adds a hook for process execution to be passed in response to an interrupt
+ *  i:  Interrupt to hook
+ *  func:   Function to jump to
+ * */
+void idt_addHandler(uint8_t i, isr_handler_t func);
+
+/*  Loads the current IDT in the current processor
  * */
 void setup_idt(void);
 
