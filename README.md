@@ -1,9 +1,12 @@
-# Modit! OS
-A micro-kernel with a modular kernel framework.
+# Modit! Micro
+An operating system based on the Modit! kernel. Uses modules to make the kernel sufficient for use in a microkernel.
 
-I'm doing this as a hobby, so don't expect Linux 2.0
+### Cloning
+The kernel is added as it's own submodule. To clone, type
 
-Besides, it's not even going to be POSIX!
+```
+git clone --recursive https://github.com/Crupette/modit-micro
+```
 
 ### Building
 The makefile can create it's own toolchain
