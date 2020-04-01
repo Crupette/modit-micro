@@ -1,6 +1,8 @@
 *.o
 *.ko
 *.d
+*.swp
+*.swo
 root/boot/kernel.bin
 root/boot/initrd.tar
 
