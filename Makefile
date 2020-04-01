@@ -31,6 +31,7 @@ iso: kernel initrd | tools/
 
 kernel: | tools/
 	ln -s ../tools -t $(KRNLDIR) | true
+	ln -s ../../../kernel/include -T root/usr/include/kernel | true
 	$(MAKE) -C $(KRNLDIR) build
 	cp $(KRNLDIR)/kernel.bin root/boot/kernel.bin
 

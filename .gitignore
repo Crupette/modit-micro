@@ -3,6 +3,7 @@
 *.d
 *.swp
 *.swo
+root/usr/include/kernel
 root/boot/kernel.bin
 root/boot/initrd.tar
 
