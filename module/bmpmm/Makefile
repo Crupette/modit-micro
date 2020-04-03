@@ -3,7 +3,7 @@ SYSROOT	:= ../../root
 OBJS	:= $(patsubst %.c,%.o,$(wildcard *.c))
 OBJS	+= $(patsubst %.asm,%.o,$(wildcard *.asm))
 
-WARN	:= -Wall -Wextra -pedantic -Wduplicated-cond -Wduplicated-branches
+WARN	:= -Wall -Wextra -Wduplicated-cond -Wduplicated-branches
 WARN	+= -Wlogical-op -Wrestrict -Wnull-dereference -Wdouble-promotion -Wshadow
 
 LD	:= ../../tools/bin/i686-pc-modit-ld

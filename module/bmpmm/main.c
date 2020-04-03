@@ -112,11 +112,11 @@ void _pmm_init(void){
     bitmap = (uint32_t*)krnl_next_free_pg;
     //Allocates the bitmap  
     
-    uintptr_t map_size = mbinfo->mem_upper * 1024;  //Memory size in KiB translated to bytes
+    uintptr_t map_size = (mbinfo->mem_lower + mbinfo->mem_upper) * 1024;  //Memory size in KiB translated to bytes
     uintptr_t map_pages = ((map_size / 4096) / 4096) / 8;
 
     for(uintptr_t i = 0; i < map_pages + 1; i++){
-        virtual_allocator->allocpg((void*)krnl_next_free_pg, false ,true);
+        virtual_allocator->allocpg((void*)krnl_next_free_pg, 0x3);
         krnl_next_free_pg += 4096;
     }
 

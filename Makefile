@@ -12,7 +12,7 @@ KAS		:= tools/bin/i686-pc-modit-as
 KAR		:= tools/bin/i686-pc-modit-ar
 KLD		:= tools/bin/i686-pc-modit-ld
 
-WARNINGS	:= -Wall -Wextra -pedantic -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict -Wnull-dereference -Wdouble-promotion -Wshadow
+WARNINGS	:= -Wall -Wextra -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict -Wnull-dereference -Wdouble-promotion -Wshadow
 KCFLAGS		:= -std=gnu99 -ffreestanding -MMD -MP $(WARNINGS) -I$(SYSROOT)/usr/include -g -DBITS32
 
 .PHONY: all iso kernel mods $(MODS) initrd tools clean run
