@@ -36,7 +36,7 @@ page_t remappg(void* phys, void *virt, uint32_t flags){
     return ret;
 }
 
-void mappg(void *phys, void *virt, uint32_t flags){
+page_t mappg(void *phys, void *virt, uint32_t flags){
     uint32_t dindex = (uint32_t)virt >> 22;
     uint32_t tindex = ((uint32_t)virt >> 12) & 0x3FF;
 
@@ -44,13 +44,12 @@ void mappg(void *phys, void *virt, uint32_t flags){
     page_table_t *tbl = dir->tables[dindex];   
 
     if(dir->tablesPhys[dindex].present == 0){
-        remappg(phys, virt, flags);
-        return;
+        return remappg(phys, virt, flags);
     }
     if(tbl->pages[tindex].entry == 0){
-        remappg(phys, virt, flags);
-        return;
+        return remappg(phys, virt, flags);
     }
+    return tbl->pages[tindex];
 }
 
 void *allocpg(void *req, uint32_t flags){
@@ -60,10 +59,9 @@ void *allocpg(void *req, uint32_t flags){
         return 0;
     }
 
-    page_t prev = virtual_allocator->remappg(block, req, flags);
+    page_t prev = virtual_allocator->mappg(block, req, flags);
     if(prev.entry != 0){
-        void *oblock = (void*)((uintptr_t)prev.addr * 0x1000);
-        physical_allocator->freepg(oblock);
+        physical_allocator->freepg(block);
     }
     return req;
 }
@@ -111,7 +109,7 @@ void pfHandler(interrupt_state_t *r){
     uint32_t faddr;
     asm volatile("mov %%cr2, %0": "=r"(faddr));
 
-    vga_printf("Page faulr : %i @ 0x%x\n", r->err, faddr);
+    vga_printf("Page fault : %i @ 0x%x\n", r->err, faddr);
     asm volatile("hlt");
 }
 

@@ -113,12 +113,14 @@ void _pmm_init(void){
     //Allocates the bitmap  
     
     uintptr_t map_size = (mbinfo->mem_lower + mbinfo->mem_upper) * 1024;  //Memory size in KiB translated to bytes
+    mapsize = map_size;
     uintptr_t map_pages = ((map_size / 4096) / 4096) / 8;
 
     for(uintptr_t i = 0; i < map_pages + 1; i++){
         virtual_allocator->allocpg((void*)krnl_next_free_pg, 0x3);
         krnl_next_free_pg += 4096;
     }
+    krnl_next_free_pg += 4096;
 
     //Map free memory regions on bitmap
     mmap_ent_t *entry = (mmap_ent_t*)(mbinfo->mmap_addr + VIRT_BASE); 
