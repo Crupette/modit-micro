@@ -1,6 +1,6 @@
 #include "kernel/modloader.h"
 #include "kernel/memory.h"
-#include "kernel/print.h"
+#include "kernel/logging.h"
 #include "kernel/io.h"
 
 extern multiboot_info_t *mbinfo;
@@ -42,7 +42,7 @@ static int32_t bm_get_free(void){
 
 static void *bm_getpg(void){
     if(pages_taken >= pages_total){
-        vga_printf("[WARN]: Bitmap is full!\n");
+        log_printf(LOG_WARNING, "Bitmap is full!\n");
         return 0;
     }
     int free = bm_get_free();
@@ -157,7 +157,7 @@ void _pmm_init(void){
     physical_allocator->freepg = bm_freepg;
     physical_allocator->resvpg = bm_resvpg;
 
-    vga_printf("[OK]: Bitmap PMM Setup: %i free, %i taken, %i total\n",
+    log_printf(LOG_OK, "Bitmap PMM Setup: %i free, %i taken, %i total\n",
             pages_free, pages_taken, pages_total);
 }
 

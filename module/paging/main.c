@@ -1,8 +1,9 @@
+#include "module/heap.h"
 #include "module/interrupt.h"
 
 #include "kernel/modloader.h"
 #include "kernel/memory.h"
-#include "kernel/print.h"
+#include "kernel/logging.h"
 #include "kernel/io.h"
 
 void invlpg(void *addr){
@@ -15,8 +16,8 @@ void invldir(){
 }
 
 page_t remappg(void* phys, void *virt, uint32_t flags){
-    uint32_t dindex = (uint32_t)virt >> 22;
-    uint32_t tindex = ((uint32_t)virt >> 12) & 0x3FF;
+    uint16_t dindex = (uint32_t)virt >> 22;
+    uint16_t tindex = ((uint32_t)virt >> 12) & 0x3FF;
 
     page_directory_t *dir = virtual_allocator->currentDirectory;
     page_table_t *tbl = dir->tables[dindex];
@@ -37,8 +38,8 @@ page_t remappg(void* phys, void *virt, uint32_t flags){
 }
 
 page_t mappg(void *phys, void *virt, uint32_t flags){
-    uint32_t dindex = (uint32_t)virt >> 22;
-    uint32_t tindex = ((uint32_t)virt >> 12) & 0x3FF;
+    uint16_t dindex = (uint32_t)virt >> 22;
+    uint16_t tindex = ((uint32_t)virt >> 12) & 0x3FF;
 
     page_directory_t *dir = virtual_allocator->currentDirectory;
     page_table_t *tbl = dir->tables[dindex];   
@@ -55,7 +56,7 @@ page_t mappg(void *phys, void *virt, uint32_t flags){
 void *allocpg(void *req, uint32_t flags){
     void *block = physical_allocator->getpg();
     if(block == 0){
-        vga_printf("[ERR]: Physical allocator failed to retrieve a free page\n");
+        log_printf(LOG_WARNING, "Physical allocator failed to retrieve a free page\n");
         return 0;
     }
 
@@ -73,7 +74,7 @@ void *allocpgs(void *req, uint32_t size, uint32_t flags){
     for(uint32_t i = 0; i < pgsize; i++){
         void *ret = virtual_allocator->allocpg(req, flags);
         if(ret != req){
-            vga_printf("[ERR]: Chunk allocation failed!\n");
+            log_printf(LOG_WARNING, "Chunk allocation failed!\n");
             return 0;
         }
         req = (void*)((uintptr_t)req + 0x1000);
@@ -105,15 +106,73 @@ page_directory_t *swpdir(page_directory_t *dir){
     return orig;
 }
 
+void clonetbl(page_directory_t *parent, page_table_t *tbl, uint16_t index){
+    uint32_t paddr = parent->tablesPhys[index].entry & 0xFFFFF000;
+
+    page_table_t *newtbl = kalloc_a(0x1000, 0x1000);
+    void *pgbuffer = kalloc_a(0x1000, 0x1000);
+
+    //Newtbl is a temporary allocation, which is remapped to physical address of new dir
+    page_t oldmaptbl = virtual_allocator->remappg((void*)paddr, newtbl, 0x3);
+
+    uint32_t cloneaddr = (uint32_t)index << 22;
+    for(uint32_t i = 0; i < 1024; i++){
+        if(tbl->pages[i].entry == 0) continue;
+        //Remap allocated memory to physical addr of page clone
+        page_t oldmappg = virtual_allocator->remappg(
+                physical_allocator->getpg(), pgbuffer, tbl->pages[i].entry & 0xFFF);
+        cloneaddr += (i << 12);
+        memcpy((void*)cloneaddr, pgbuffer, 0x1000); 
+
+        //Restore page address to original mapping
+        oldmappg = virtual_allocator->remappg(
+                (void*)(oldmappg.entry & 0xFFFFF000), pgbuffer, oldmappg.entry & 0xFFF);
+
+        newtbl->pages[i] = oldmappg;
+    }
+
+    //Restore table address to original mapping
+    virtual_allocator->remappg(
+            (void*)(oldmaptbl.entry & 0xFFFFF000), newtbl, oldmaptbl.entry & 0xFFF);
+
+    kfree(newtbl);
+    kfree(pgbuffer);
+}
+
+page_directory_t *clonedir(page_directory_t *dir){
+    page_directory_t *new = kalloc_a(sizeof(page_directory_t), 0x1000);
+    memset(new, 0, sizeof(page_directory_t));
+
+    //Map kernel page table entries
+    for(int i = 864; i < 1024; i++){
+        new->tables[i] = dir->tables[i];
+        new->tablesPhys[i] = dir->tablesPhys[i];
+    }
+    new->tablesPhys[1023].entry = (uintptr_t)(new) | 0x3;
+    new->tables[1023] = (page_table_t*)new;
+
+    //Copy rest of tables
+    for(int i = 0; i < 864; i++){
+        if(dir->tables[i] == 0) continue;
+        new->tablesPhys[i].entry = (uintptr_t)physical_allocator->getpg() 
+            | (dir->tablesPhys[i].entry & 0xFFF);
+        new->tables[i] = (page_table_t*)((i * 0x1000) + 0xFFC00000);
+        clonetbl(new, dir->tables[i], i);
+    }
+
+    return new;
+}
+
 void pfHandler(interrupt_state_t *r){
     uint32_t faddr;
     asm volatile("mov %%cr2, %0": "=r"(faddr));
 
-    vga_printf("Page fault : %i @ 0x%x\n", r->err, faddr);
+    log_printf(LOG_FATAL, "Page fault : %i @ 0x%x\n", r->err, faddr);
     asm volatile("hlt");
 }
 
 int _init(){
+
     virtual_allocator->invlpg = invlpg;
     virtual_allocator->invldir = invldir;
     virtual_allocator->remappg = remappg;
@@ -129,7 +188,10 @@ int _init(){
     
     idt_addHandler(14, pfHandler); 
 
-    vga_printf("[OK]: Setup second-stage pager\n");
+    virtual_allocator->currentDirectory->tables[0] = 0;
+    virtual_allocator->currentDirectory->tablesPhys[0].entry = 0;
+
+    log_printf(LOG_OK, "Setup second-stage pager\n");
     return 0;
 }
 
@@ -143,3 +205,4 @@ module_load(_init);
 module_unload(_fini);
 
 module_depends(interrupt);
+module_depends(heap);

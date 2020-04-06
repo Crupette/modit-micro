@@ -1,7 +1,7 @@
 #include "module/interrupt.h"
 
 #include "kernel/modloader.h"
-#include "kernel/print.h"
+#include "kernel/logging.h"
 #include "kernel/io.h"
 
 typedef struct idt {
@@ -37,7 +37,7 @@ void _interrupt_handler(interrupt_state_t *state){
         outb(0x20, 0x20);
     }else{
         //Damaging ISR's need to be caught to prevent destructive triple-faults
-        vga_printf("Unhandled exception %i\n", state->num);
+        log_printf(LOG_FATAL, "Unhandled exception %i\n", state->num);
         while(true) asm("hlt");
     }
 }
@@ -327,8 +327,10 @@ void setup_idt(){
     idt_createEntry(255, _irq223, 0x08, 0x8E);
 
     idt_ptr_t *paddr = &_idt.ptr;
+
+    extern void idt_flush(idt_ptr_t *ptr);
     idt_flush(paddr);
-    vga_printf("[OK]: Setup IDT\n");
+    log_printf(LOG_OK, "Setup IDT\n");
 }
 
 extern void idt_flush(idt_ptr_t *idt);
@@ -339,7 +341,7 @@ int _init(){
     setup_idt();
 
     IRQ_ENABLE;
-    vga_printf("[OK]: Loaded Interrupt Structures\n");
+    log_printf(LOG_OK, "Loaded Interrupt Structures\n");
     return 0;
 }
 

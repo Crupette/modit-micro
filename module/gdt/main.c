@@ -1,7 +1,7 @@
 #include "module/gdt.h"
 
 #include "kernel/modloader.h"
-#include "kernel/print.h"
+#include "kernel/logging.h"
 #include "kernel/io.h"
 
 enum {
@@ -51,7 +51,7 @@ int _init(){
     extern void gdt_flush(uint32_t ptr);
     gdt_flush((uintptr_t)&_gdtd);
 
-    vga_printf("[OK]: Setup GDT\n");
+    log_printf(LOG_OK, "Setup GDT\n");
 
     return 0;
 }

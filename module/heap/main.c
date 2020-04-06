@@ -3,7 +3,7 @@
 
 #include "kernel/modloader.h"
 #include "kernel/memory.h"
-#include "kernel/print.h"
+#include "kernel/logging.h"
 #include "kernel/io.h"
 
 static bin_header_t *bin_tail;
@@ -27,12 +27,15 @@ static bin_header_t *find_free_bin(){
 
 static bin_header_t *add_bin(bin_header_t *parent, void *addr, size_t size){
     if(parent == 0){    //Can't have a floating bin
-        vga_printf("[ERR]: Attempted to create heap bin with no parent\n");
+        log_printf(LOG_WARNING, "Attempted to create heap bin with no parent\n");
         return 0;
     }
     if((uintptr_t)addr < BIN_START){    //Bin addr cannot be out of bounds
-        vga_printf("[ERR]: Bin allocator requested bin outside of heap range (%i)\n", addr);
+        log_printf(LOG_WARNING, "Bin allocator requested bin outside of heap range (%i)\n", addr);
         return 0;
+    }
+    if(size == 0){
+        return 0;   //Block is 0 bytes, no allocation needed
     }
     bin_header_t *newbin = find_free_bin();
 
@@ -119,17 +122,59 @@ static void split_bin(bin_header_t *bin, size_t s){
 static bin_header_t *find_best_fit(size_t s){
     bin_header_t *best = 0;
     for(bin_header_t *bin = bin_head; bin; bin = bin->next){
-        if(bin->taken != 0) continue;
+        if(bin->taken == 1) continue;
         if(best == 0){
             best = bin;
             continue;
         }
-        size_t sdif = bin->size - s;
-        if(sdif >= 0 && best->size - s > sdif){
+        int32_t sdif = bin->size - s;
+        if(sdif >= 0 && (int32_t)(best->size - s) > sdif){
             best = bin;
         }
     }
     return best;
+}
+
+void *kalloc_a(size_t s, uint32_t a){
+    if(s == 0) return 0;
+    if(a % 16 != 0){
+        log_printf(LOG_WARNING, "Unable to align new block with %i alignment. Needs multiple of 16\n", a);
+        return 0;
+    }
+    size_t rsize = ((s + 15) / 16) * 16;
+
+    bin_header_t *bestbin = 0;
+    for(bin_header_t *bin = bin_head; bin; bin = bin->next){
+        if(bin->taken != 0) continue;
+        if(bestbin == 0 && (uintptr_t)bin->addr % a == 0 && bin->size >= rsize){
+            bestbin = bin;
+            continue;
+        }
+        if((uintptr_t)bin->addr % a == 0 && bin->size >= rsize){
+            int32_t sdif = bin->size - s;
+            if((int32_t)(bestbin->size - s) > sdif){
+                bestbin = bin;
+            }
+        }
+    }
+    if(bestbin == 0){
+        uint32_t alidif = 0;
+        if(bin_tail->taken){
+            if(a - (((uintptr_t)bin_tail->addr + bin_tail->size) % a) != a){
+                alidif = a - (((uintptr_t)bin_tail->addr + bin_tail->size) % a);
+            }
+        }else{
+            bin_tail->size = a - ((uintptr_t)bin_tail->addr % a);
+            virtual_allocator->allocpgs(bin_tail->addr, bin_tail->size, 0x3);
+        }
+        append_bin(alidif);
+        bestbin = append_bin(rsize);
+    }
+
+    split_bin(bestbin, rsize);
+    bestbin->taken = 1;
+
+    return bestbin->addr;
 }
 
 void *kalloc(size_t s){
@@ -138,7 +183,12 @@ void *kalloc(size_t s){
 
     bin_header_t *bestbin = find_best_fit(rsize);
     if(bestbin == 0){
-        bestbin = append_bin(rsize);
+        if(bin_tail->taken == 1){
+            bestbin = append_bin(rsize);
+        }else{
+            bestbin->size = rsize;
+            virtual_allocator->allocpgs(bestbin->addr, rsize, 0x3);
+        }
     }
 
     split_bin(bestbin, rsize);
@@ -171,6 +221,7 @@ int _init(){
     bin_head->addr = (void*)BIN_START;
     bin_head->size = 0x1000;
 
+    log_printf(LOG_OK, "Added kernel heap starting at %x\n", BIN_START);
     return 0;
 }
 
@@ -183,4 +234,4 @@ module_name(heap);
 module_load(_init);
 module_unload(_fini);
 
-module_depends(paging);
+module_depends(interrupt);
