@@ -36,7 +36,7 @@ void add_gdt(uint8_t i, uint32_t base, uint32_t limit, uint8_t access, uint8_t f
     entry->flags |= (flags & 0xF0);
 }
 
-int _init(){
+int gdt_init(){
     _gdtd.size = (sizeof(gdt_entry_t) * GDT_NUM_ENTRIES) - 1;
     _gdtd.addr = (uint32_t)&(_gdts[0]);
 
@@ -56,11 +56,11 @@ int _init(){
     return 0;
 }
 
-int _fini(){
+int gdt_fini(){
     return 0;
 }
 
 module_name(gdt);
 
-module_load(_init);
-module_unload(_fini);
+module_load(gdt_init);
+module_unload(gdt_fini);

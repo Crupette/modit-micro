@@ -167,11 +167,11 @@ void pfHandler(interrupt_state_t *r){
     uint32_t faddr;
     asm volatile("mov %%cr2, %0": "=r"(faddr));
 
-    log_printf(LOG_FATAL, "Page fault : %i @ 0x%x\n", r->err, faddr);
+    vga_printf("FATAL: Page fault : %i @ 0x%x\n", r->err, faddr);
     asm volatile("hlt");
 }
 
-int _init(){
+int paging_init(){
 
     virtual_allocator->invlpg = invlpg;
     virtual_allocator->invldir = invldir;
@@ -195,14 +195,14 @@ int _init(){
     return 0;
 }
 
-int _fini(){
+int paging_fini(){
     return 0;
 }
 
 module_name(pager);
 
-module_load(_init);
-module_unload(_fini);
+module_load(paging_init);
+module_unload(paging_fini);
 
 module_depends(interrupt);
 module_depends(heap);

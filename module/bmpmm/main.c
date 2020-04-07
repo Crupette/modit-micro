@@ -166,13 +166,13 @@ int _init(){
     return 0;
 }
 
-int _fini(){
+int bmpmm_fini(){
     return 0;
 }
 
 module_name(pmm);
 
 module_load(_init);
-module_unload(_fini);
+module_unload(bmpmm_fini);
 
 module_depends(interrupt);

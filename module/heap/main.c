@@ -22,6 +22,7 @@ static bin_header_t *find_free_bin(){
     }
     bin_hiaddr = bin_hiaddr + 1;
     virtual_allocator->allocpg(bin_hiaddr, 0x3);
+    memset(bin_hiaddr, 0, sizeof(bin_header_t));
     return bin_hiaddr;
 }
 
@@ -207,7 +208,7 @@ void kfree(void *p){
     }
 }
 
-int _init(){
+int heap_init(){
     //Setup the first heap bin
     empty_head = 0;
     bin_head = (bin_header_t*)(krnl_next_free_pg);
@@ -225,13 +226,13 @@ int _init(){
     return 0;
 }
 
-int _fini(){
+int heap_fini(){
     return 0;
 }
 
 module_name(heap);
 
-module_load(_init);
-module_unload(_fini);
+module_load(heap_init);
+module_unload(heap_fini);
 
 module_depends(interrupt);

@@ -334,7 +334,7 @@ void setup_idt(){
 }
 
 extern void idt_flush(idt_ptr_t *idt);
-int _init(){
+int interrupt_init(){
     memset(&_idt, 0, sizeof(_idt));
 
     setup_irq();
@@ -345,14 +345,15 @@ int _init(){
     return 0;
 }
 
-int _fini(){
+int interrupt_fini(){
     IRQ_DISABLE;
+    log_printf(LOG_WARNING, "Disabled interrupts: I hope you know what your doing!\n");
     return 0;
 }
 
 module_name(interrupt);
 
-module_load(_init);
-module_unload(_fini);
+module_load(interrupt_init);
+module_unload(interrupt_fini);
 
 module_depends(gdt);
