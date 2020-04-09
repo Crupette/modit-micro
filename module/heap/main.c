@@ -38,29 +38,35 @@ static bin_header_t *add_bin(bin_header_t *parent, void *addr, size_t size){
     if(size == 0){
         return 0;   //Block is 0 bytes, no allocation needed
     }
+    disable_interrupts();
     bin_header_t *newbin = find_free_bin();
+    memset(newbin, 0, sizeof(*newbin));
 
-    if(parent->next != 0){
-        parent->next->prev = newbin;
-        newbin->next = parent->next;
-    }else{  //Newbin is now the tail of the linked list
-        bin_tail = newbin;
-    }
-
-    parent->next = newbin;
+    newbin->next = parent->next;
     newbin->prev = parent;
+    
+    if(newbin->next) newbin->next->prev = newbin;
+    parent->next = newbin;
 
-    newbin->addr = addr;
+    if(parent == bin_tail) bin_tail = newbin;
+
     newbin->size = size;
+    newbin->addr = addr;
 
     virtual_allocator->allocpgs(addr, size, 0x3);
+    enable_interrupts();
     return newbin;
 }
 
 static void remove_bin(bin_header_t *bin){
+    disable_interrupts();
     if(bin->next != 0) bin->next->prev = bin->prev;
     if(bin->prev != 0) bin->prev->next = bin->next;
 
+    if(bin_head == bin_tail == bin){
+        enable_interrupts();
+        return;
+    }
     if(bin_head == bin) bin_head = bin->next;
     if(bin_tail == bin) bin_tail = bin->prev;
 
@@ -79,6 +85,7 @@ static void remove_bin(bin_header_t *bin){
     }else{
         empty_head = bin;
     }
+    enable_interrupts();
 }
 
 static bin_header_t *append_bin(size_t size){
@@ -87,6 +94,7 @@ static bin_header_t *append_bin(size_t size){
 }
 
 static bin_header_t *merge_bin(bin_header_t *mergee){
+    disable_interrupts();
     bool merged = true;
     while(merged){
         merged = false;
@@ -106,7 +114,7 @@ static bin_header_t *merge_bin(bin_header_t *mergee){
             merged = true;
         }
     }
-
+    enable_interrupts();
     return mergee;
 }
 

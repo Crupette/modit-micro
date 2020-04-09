@@ -12,6 +12,8 @@ typedef struct idt {
 static idt_t _idt;
 static isr_handler_t _handlers[256] = { 0 };
 
+static int interrupt_disable_depth = 0;
+
 void idt_createEntry(uint8_t i, int_handler_t func, uint16_t selector, uint8_t flags){
     idt_entry_t *entry = &_idt.entries[i];
     entry->offset_low = (uintptr_t)func & 0xFFFF;
@@ -25,6 +27,7 @@ void idt_addHandler(uint8_t i, isr_handler_t func){
 }
 
 void _interrupt_handler(interrupt_state_t *state){
+    interrupt_disable_depth++;
     //Handler must exist to be called
     if(_handlers[state->num] != 0){
         _handlers[state->num](state);
@@ -36,10 +39,14 @@ void _interrupt_handler(interrupt_state_t *state){
         }
         outb(0x20, 0x20);
     }else{
+        uint32_t faddr;
+        asm volatile("mov %%cr2, %0": "=r"(faddr));
         //Damaging ISR's need to be caught to prevent destructive triple-faults
-        log_printf(LOG_FATAL, "Unhandled exception %i\n", state->num);
+        log_printf(LOG_FATAL, "Unhandled exception %i @ %p (if pg @ %x)\n", 
+                state->num, state->eip, faddr);
         while(true) asm("hlt");
     }
+    interrupt_disable_depth--;
 }
 
 static void setup_irq(){
@@ -62,6 +69,18 @@ static void setup_irq(){
     //Masking
     outb(0x21, 0x00);
     outb(0x21, 0x00);
+}
+
+void disable_interrupts(void){
+    if(interrupt_disable_depth < 1) IRQ_DISABLE;
+    interrupt_disable_depth++;
+}
+void enable_interrupts(void){
+    interrupt_disable_depth--;
+    if(interrupt_disable_depth < 1){
+        IRQ_ENABLE;
+    }
+    if(interrupt_disable_depth < 0) interrupt_disable_depth = 0;
 }
 
 void setup_idt(){

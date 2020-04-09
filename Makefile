@@ -48,8 +48,10 @@ tools:
 
 clean:
 	$(MAKE) -C $(KRNLDIR) clean
-	rm -f $(RUNDIR)/modetos.iso
-	rm -f initrd/*
+	rm $(RUNDIR)/modetos.iso | true
+	rm initrd/* | true
+	rm module/*/*.o | true
+	rm module/*/*.ko | true
 
 run:
 	qemu-system-i386 -cdrom run/moditos.iso -s -serial stdio -monitor tcp:127.0.0.1:55555,server,nowait -m 64M

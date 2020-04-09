@@ -2,8 +2,10 @@
 
 #include "kernel/modloader.h"
 #include "kernel/logging.h"
+#include "kernel/print.h"
 #include "kernel/vgaterm.h"
 #include "kernel/io.h"
+#include "kernel/string.h"
 
 #include <stdarg.h>
 
@@ -51,10 +53,10 @@ void _log_printf(char *file, uint32_t line, log_level_t lvl, char *fmt, ...){
     strcpy(buf, obuf);
     kfree(obuf);
 
-    add_entry(buf);
-
     //Outputs to VGA and serial
     vga_printf("%s", buf);
+    add_entry(buf);
+
 }
 
 char *_log_getmsg(uint32_t i){

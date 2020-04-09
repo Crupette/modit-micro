@@ -64,6 +64,9 @@ void idt_addHandler(uint8_t i, isr_handler_t func);
  * */
 void setup_idt(void);
 
+void disable_interrupts(void);
+void enable_interrupts(void);
+
 //Handler functions
 extern void _isr0();
 extern void _isr1();
