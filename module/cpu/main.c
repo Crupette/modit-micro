@@ -1,5 +1,6 @@
 #include "module/cpu/acpi.h"
 #include "module/cpu/apic.h"
+#include "module/cpu.h"
 #include "module/interrupt.h"
 
 #include "kernel/modloader.h"
@@ -8,6 +9,7 @@
 #include "kernel/io.h"
 
 bool cpuid_supported = true;
+bool msr_supported = true;
 
 void cpuid(int code, uint32_t *a, uint32_t *d){
     if(!cpuid_supported) return;
@@ -20,6 +22,22 @@ int cpuid_data(int code, uint32_t buf[4]){
                           "=c"(*(buf + 3)),"=d"(*(buf + 2)):
                           "a"(code));
     return ((int*)buf)[0];
+}
+
+bool cpu_chk_msr(void){
+    if(!cpuid_supported) return false;
+    uint32_t a, d;
+    cpuid(1, &a, &d);   //Read CPU features
+    return d & CPUID_FEAT_EDX_MSR;
+}
+
+void cpu_read_msr(uint32_t id, uint32_t *lo, uint32_t *hi){
+    if(!msr_supported) return;
+    asm volatile("rdmsr": "=a"(*lo), "=d"(*hi): "c"(id));
+}
+
+void cpu_write_msr(uint32_t id, uint32_t lo, uint32_t hi){
+    asm volatile("wrmsr": "=a"(lo), "=d"(hi): "c"(id));
 }
 
 void _invl_opcode_hook(interrupt_state_t *state){
@@ -41,10 +59,19 @@ int cpu_init(){
 
     idt_addHandler(6, 0);
 
+    msr_supported = cpu_chk_msr();
+
     load_rsdp();
     load_rsdt();
 
     acpi_find_madt();
+    acpi_find_topology();
+
+    apic_setup();
+
+    //Enabling the APIC will be dealt with in a second stage module
+    //Right now, it's dealt with here
+    apic_enable();
 
     return 0;
 }
@@ -60,5 +87,5 @@ module_unload(cpu_fini);
 
 module_depends(paging);
 module_depends(heap);
-module_depends(logger);
+module_depends(dthelper);
 module_depends(interrupt);

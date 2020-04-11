@@ -21,7 +21,7 @@ static bin_header_t *find_free_bin(){
         return bin;
     }
     bin_hiaddr = bin_hiaddr + 1;
-    virtual_allocator->allocpg(bin_hiaddr, 0x3);
+    virtual_allocator->allocpgs(bin_hiaddr, 0x2000, 0x3);
     memset(bin_hiaddr, 0, sizeof(bin_header_t));
     return bin_hiaddr;
 }
@@ -38,7 +38,6 @@ static bin_header_t *add_bin(bin_header_t *parent, void *addr, size_t size){
     if(size == 0){
         return 0;   //Block is 0 bytes, no allocation needed
     }
-    disable_interrupts();
     bin_header_t *newbin = find_free_bin();
     memset(newbin, 0, sizeof(*newbin));
 
@@ -53,13 +52,11 @@ static bin_header_t *add_bin(bin_header_t *parent, void *addr, size_t size){
     newbin->size = size;
     newbin->addr = addr;
 
-    virtual_allocator->allocpgs(addr, size, 0x3);
-    enable_interrupts();
+    virtual_allocator->allocpgs(addr, size + 0x1000, 0x3);
     return newbin;
 }
 
 static void remove_bin(bin_header_t *bin){
-    disable_interrupts();
     if(bin->next != 0) bin->next->prev = bin->prev;
     if(bin->prev != 0) bin->prev->next = bin->next;
 
@@ -85,7 +82,6 @@ static void remove_bin(bin_header_t *bin){
     }else{
         empty_head = bin;
     }
-    enable_interrupts();
 }
 
 static bin_header_t *append_bin(size_t size){
@@ -94,7 +90,6 @@ static bin_header_t *append_bin(size_t size){
 }
 
 static bin_header_t *merge_bin(bin_header_t *mergee){
-    disable_interrupts();
     bool merged = true;
     while(merged){
         merged = false;
@@ -114,7 +109,6 @@ static bin_header_t *merge_bin(bin_header_t *mergee){
             merged = true;
         }
     }
-    enable_interrupts();
     return mergee;
 }
 
@@ -132,12 +126,13 @@ static bin_header_t *find_best_fit(size_t s){
     bin_header_t *best = 0;
     for(bin_header_t *bin = bin_head; bin; bin = bin->next){
         if(bin->taken == 1) continue;
+        if(bin->size < s) continue;
         if(best == 0){
             best = bin;
             continue;
         }
         int32_t sdif = bin->size - s;
-        if(sdif >= 0 && (int32_t)(best->size - s) > sdif){
+        if(best->size - s > sdif){
             best = bin;
         }
     }
@@ -199,7 +194,6 @@ void *kalloc(size_t s){
             virtual_allocator->allocpgs(bestbin->addr, rsize, 0x3);
         }
     }
-
     split_bin(bestbin, rsize);
 
     bestbin->taken = 1;

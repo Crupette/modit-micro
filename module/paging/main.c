@@ -167,7 +167,7 @@ void pfHandler(interrupt_state_t *r){
     uint32_t faddr;
     asm volatile("mov %%cr2, %0": "=r"(faddr));
 
-    vga_printf("FATAL: Page fault : %i @ 0x%x\n", r->err, faddr);
+    vga_printf("Page fault : %i @ %x (%x)\n", r->err, faddr, r->eip);
     asm volatile("hlt");
 }
 

@@ -54,4 +54,4 @@ clean:
 	rm module/*/*.ko | true
 
 run:
-	qemu-system-i386 -cdrom run/moditos.iso -s -serial stdio -monitor tcp:127.0.0.1:55555,server,nowait -m 64M
+	qemu-system-i386 -cdrom run/moditos.iso -s -serial stdio -monitor tcp:127.0.0.1:55555,server,nowait -m 64M -smp cores=2

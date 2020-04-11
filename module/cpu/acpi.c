@@ -68,8 +68,6 @@ void load_rsdt(void){
     rsdt_entries = (rsdt_len - sizeof(*rsdt_hdr)) / sizeof(uintptr_t);
     rsdt_ptrs = (uintptr_t*)((uintptr_t)rsdt_start + sizeof(*rsdt_hdr));
 
-    log_printf(LOG_INFO, "RSDT has %i entries\n", rsdt_entries);
-
     //Get range for allocation
     uintptr_t min_range = 0xFFFFFFFF;
     uintptr_t max_range = 0;
@@ -99,10 +97,8 @@ void load_rsdt(void){
         if(validate_acpi_table((acpi_sdt_hdr_t*)(rsdt_ptrs[i])) == 0){
             log_printf(LOG_WARNING, "Table %i in RSDT table is invalid!\n", i);
         }
-        log_printf(LOG_DEBUG, "%s\n", rsdt_ptrs[i]);
     }
 
-    log_printf(LOG_INFO, "Remapped RSDT entries starting at %p\n", rsdt_remap);
 }
 
 void *rsdt_find_table(char *sig){
