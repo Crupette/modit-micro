@@ -22,6 +22,19 @@ list_t *new_round_list(void){
     return _list_allocator(true);
 }
 
+void delete_list(list_t *list){
+    if(list == 0) return;
+    if(list->head == list->tail == 0){
+        kfree(list);
+        return;
+    }
+    for(list_node_t *node = list->head; node; node = node->next){
+        kfree(node);
+        if(node == list->tail) break;
+    }
+    kfree(list);
+}
+
 int list_push(list_t *list, void *data){
     if(list == 0) {
         log_printf(LOG_WARNING, "Tried to push to NULL list\n");
@@ -130,4 +143,22 @@ int list_find(list_t *list, void *data){
         if(node->data == data) return i;
     }
     return -1;
+}
+
+void list_delete(list_t *list, size_t i){
+    if(list == 0) return;
+    if(i == -1) return;
+    list_node_t *node = 0;
+    for(node = list->head; node, i; node = node->next, i--) { }
+
+    if(node == 0) return;
+    if(node->prev) node->prev->next = node->next;
+    if(node->next) node->next->prev = node->prev;
+
+    kfree(node);
+}
+
+void list_remove(list_t *list, void *data){
+    if(list == 0) return;
+    list_delete(list, list_find(list, data));
 }

@@ -91,6 +91,9 @@ void apic_enable(void);
  * */
 void apic_ack(void);
 
+uint32_t apic_read(uint16_t r);
+void apic_write(uint16_t r, uint32_t va);
+
 /*  Reads from the IO/APIC given
  *  io: IO/APIC structure pointer
  *  reg:Register to read

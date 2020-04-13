@@ -168,8 +168,22 @@ void _spurious_empty(interrupt_state_t *r){
 }
 
 void apic_enable(void){
-    APIC_WRITE(0x350, 0x8700);
-    APIC_WRITE(0x360, 0x400);
+    APIC_WRITE(0xE0, 0xFFFFFFFF);
+    APIC_WRITE(0xD0, (APIC_READ(0xD0) & 0x00FFFFFF) | 1);
+    APIC_WRITE(0x320, 0x10000); //Disable timer
+    APIC_WRITE(0x340, 4 << 8);
+    APIC_WRITE(0x350, 0x10000);
+    APIC_WRITE(0x360, 0x10000);
+    APIC_WRITE(0x80, 0);
+
+    uint32_t eax, edx;
+    cpu_read_msr(0x1B, &eax, &edx);
+
+    eax |= 0x800;
+
+    cpu_write_msr(0x1B,
+            eax,
+            edx);
 
     //Enable spurious interrupt
     APIC_WRITE(0xF0, APIC_READ(0xF0) | 0x100);
@@ -177,6 +191,14 @@ void apic_enable(void){
 
 void apic_ack(void){
     APIC_WRITE(0xB0, 0);
+}
+
+void apic_write(uint16_t r, uint32_t val){
+    *((uint32_t volatile*)(apic_registry + r)) = val;
+}
+
+uint32_t apic_read(uint16_t r){
+    return *((uint32_t volatile*)(apic_registry + r));
 }
 
 uint32_t ioapic_read(ioapic_t *io, uint8_t r){

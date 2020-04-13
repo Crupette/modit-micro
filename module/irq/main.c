@@ -8,12 +8,10 @@ static isr_handler_t _handlers[224] = { 0 };
 static int interrupt_disable_depth = 0;
 
 void irq_addHandler(uint8_t i, isr_handler_t handler){
-    if(i < 32) return 0;
-    _handlers[i - 32] = handler;
+    _handlers[i] = handler;
 }
 
 void _irq_handler(interrupt_state_t *state){
-    //vga_printf("Interrupt %x!\n", state->num - 32);
     //Handler must exist to be called
     if(_handlers[state->num - 32] != 0){
         _handlers[state->num - 32](state);

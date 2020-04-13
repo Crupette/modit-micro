@@ -32,7 +32,7 @@ static bin_header_t *add_bin(bin_header_t *parent, void *addr, size_t size){
         return 0;
     }
     if((uintptr_t)addr < BIN_START){    //Bin addr cannot be out of bounds
-        log_printf(LOG_WARNING, "Bin allocator requested bin outside of heap range (%i)\n", addr);
+        log_printf(LOG_WARNING, "Bin allocator requested bin outside of heap range (%p)\n", addr);
         return 0;
     }
     if(size == 0){
@@ -236,4 +236,5 @@ module_name(heap);
 module_load(heap_init);
 module_unload(heap_fini);
 
+module_depends(pmm);
 module_depends(isr);

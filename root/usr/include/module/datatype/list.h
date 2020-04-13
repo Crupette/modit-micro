@@ -41,6 +41,11 @@ list_t *new_list(void);
  * */
 list_t *new_round_list(void);
 
+/*  Frees the list and allocated data-nodes from memory
+ *  list:   List to delete
+ * */
+void delete_list(list_t *list);
+
 /*  Pushes new data to the tail of the list
  *  list:   List to append to
  *  data:   Pointer to new data
@@ -76,5 +81,17 @@ list_node_t *list_get(list_t *list, size_t i);
  *  r:      Index in list (first found)
  * */
 int list_find(list_t *list, void *data);
+
+/*  Removes element i from the list
+ *  list:   List to delete from
+ *  i:      Index to delete
+ * */
+void list_delete(list_t *list, size_t i);
+
+/*  Removes list node containing [data]
+ *  list:   List to remove from
+ *  data:   Data to remove
+ * */
+void list_remove(list_t *list, void *data);
 
 #endif
