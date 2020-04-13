@@ -186,7 +186,7 @@ int paging_init(){
 
     virtual_allocator->swpdir = swpdir;
     
-    idt_addHandler(14, pfHandler); 
+    isr_addHandler(14, pfHandler); 
 
     virtual_allocator->currentDirectory->tables[0] = 0;
     virtual_allocator->currentDirectory->tablesPhys[0].entry = 0;
@@ -204,5 +204,6 @@ module_name(pager);
 module_load(paging_init);
 module_unload(paging_fini);
 
-module_depends(interrupt);
+module_depends(idt);
+module_depends(isr);
 module_depends(heap);

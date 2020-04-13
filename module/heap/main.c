@@ -61,7 +61,6 @@ static void remove_bin(bin_header_t *bin){
     if(bin->prev != 0) bin->prev->next = bin->next;
 
     if(bin_head == bin_tail == bin){
-        enable_interrupts();
         return;
     }
     if(bin_head == bin) bin_head = bin->next;
@@ -237,4 +236,4 @@ module_name(heap);
 module_load(heap_init);
 module_unload(heap_fini);
 
-module_depends(interrupt);
+module_depends(isr);

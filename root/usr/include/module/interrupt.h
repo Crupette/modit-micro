@@ -58,7 +58,8 @@ void idt_createEntry(uint8_t i, int_handler_t func, uint16_t selector, uint8_t f
  *  i:  Interrupt to hook
  *  func:   Function to jump to
  * */
-void idt_addHandler(uint8_t i, isr_handler_t func);
+void isr_addHandler(uint8_t i, isr_handler_t func);
+void irq_addHandler(uint8_t i, isr_handler_t func);
 
 /*  Loads the current IDT in the current processor
  * */

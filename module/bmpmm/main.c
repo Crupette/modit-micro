@@ -175,4 +175,4 @@ module_name(pmm);
 module_load(_init);
 module_unload(bmpmm_fini);
 
-module_depends(interrupt);
+module_depends(isr);

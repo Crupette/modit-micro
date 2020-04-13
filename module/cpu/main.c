@@ -45,7 +45,7 @@ void _invl_opcode_hook(interrupt_state_t *state){
 }
 
 int cpu_init(){
-    idt_addHandler(6, _invl_opcode_hook);
+    isr_addHandler(6, _invl_opcode_hook);
     uint32_t vendor[5];
     memset(vendor, 0, 20);
 
@@ -57,7 +57,7 @@ int cpu_init(){
         log_printf(LOG_DEBUG, "CPU Vendor reported as %s\n", (char*)(vendor + 1));
     }
 
-    idt_addHandler(6, 0);
+    isr_addHandler(6, 0);
 
     msr_supported = cpu_chk_msr();
 
@@ -88,4 +88,5 @@ module_unload(cpu_fini);
 module_depends(paging);
 module_depends(heap);
 module_depends(dthelper);
-module_depends(interrupt);
+module_depends(idt);
+module_depends(isr);

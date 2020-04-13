@@ -2,6 +2,7 @@
 #include "module/cpu/acpi.h"
 #include "module/cpu.h"
 #include "module/heap.h"
+#include "module/interrupt.h"
 
 #include "kernel/memory.h"
 #include "kernel/logging.h"
@@ -9,9 +10,11 @@
 madt_t *acpi_madt = 0;
 
 list_t *acpi_madt_entries = 0;
-list_t *acpi_topology = 0;
 
-uint8_t *apic_registry = 0;
+list_t *acpi_topology = 0;
+list_t *ioapics = 0;
+
+uint8_t volatile *apic_registry = 0;
 
 void acpi_find_madt(void){
     acpi_madt = (madt_t*)rsdt_find_table("APIC");
@@ -51,6 +54,21 @@ void acpi_find_topology(void){
 }
 
 static void disable_pic(){
+    outb(0x20, 0x11);
+    outb(0xA0, 0x11);
+    
+    outb(0x21, 0x20);
+    outb(0xA1, 0x28);
+
+    outb(0x21, 0x04);
+    outb(0xA1, 0x02);
+
+    //outb(0x21, 0x01);
+    //outb(0xA1, 0x01);
+
+    outb(0x20, 0x20);
+    outb(0xA0, 0x20);
+
     outb(0x21, 0xFF);
     outb(0xA1, 0xFF);
 }
@@ -72,9 +90,101 @@ void apic_setup(void){
     virtual_allocator->remappg((void*)0xFEE00000, apic_registry, 0x3);
 
     disable_pic();
+
+    ioapics = new_list();
+    for(list_node_t *node = acpi_madt_entries->head; node; node = node->next){
+        madt_entry_header_t *header = node->data;
+        //Entry represents an IO/APIC
+        if(header->type == 1){
+            //Remap registers to virtual page for indexing
+            uintptr_t reg_phys = *((uintptr_t*)((uint8_t*)header + 4));
+            uintptr_t reg_phys_offset = reg_phys % 0x1000;
+
+            uintptr_t reg_virt = (uintptr_t)kalloc_a(0x1000, 0x1000);
+
+            virtual_allocator->remappg((void*)reg_phys, (void*)reg_virt, 0x13);
+            *((uintptr_t*)((uint8_t*)header + 4)) = reg_virt + reg_phys_offset;
+
+            ioapic_t *io_apic = kalloc(sizeof(ioapic_t));
+            io_apic->registers = reg_virt;
+            io_apic->apic_id = (ioapic_read(io_apic, 0) >> 24) & 0xF0;
+            io_apic->apic_ver = ioapic_read(io_apic, 1);
+            io_apic->count = (ioapic_read(io_apic, 1) >> 16) + 1;
+            io_apic->base = *((uintptr_t*)((uint8_t*)header + 8));
+
+            list_push(ioapics, io_apic);
+            log_printf(LOG_DEBUG, "IO/APIC %i v %i, %i entries, base %i\n",
+                    io_apic->apic_id, io_apic->apic_ver, io_apic->count, io_apic->base);
+        }
+        //Interrupt source override for IO/APIC
+        if(header->type == 2){
+            uint8_t bus_src = *((uint8_t*)header + 2);
+            uint8_t irq_src = *((uint8_t*)header + 3);
+            uint32_t gsi = *((uint32_t*)((uint8_t*)header + 4));
+            uint16_t flags = *((uint16_t*)((uint8_t*)header + 8));
+
+            //Search for proper IO/APIC to handle redirection
+            ioapic_t *io_apic = 0;
+            for(list_node_t *apic_node = ioapics->head; apic_node; apic_node = apic_node->next){
+                io_apic = apic_node->data;
+                if(io_apic->base < gsi) break;
+                io_apic = 0;
+            }
+            if(io_apic == 0){
+                log_printf(LOG_DEBUG, "Could not locate proper IO/APIC to handle relocation for interrupt %i\n",
+                        gsi);
+                continue;
+            }
+
+            ioapic_redir_entry_t *redir_entry = kalloc(8);
+
+            redir_entry->upper = ioapic_read(io_apic, 
+                    IOAPIC_REDIR_TABLE(irq_src - io_apic->base));
+            redir_entry->lower = ioapic_read(io_apic, 
+                    IOAPIC_REDIR_TABLE(irq_src - io_apic->base) + 1);
+
+            //ISR irq_src -> gsi : FIX | PHYSICAL | UNMASKED | NODEST
+            redir_entry->vector = irq_src;
+            redir_entry->delivery = 0;
+            redir_entry->dtype = 0;
+            redir_entry->mask = 0;
+            redir_entry->dest = 0;
+
+            redir_entry->polarity = (flags & 2) > 0;
+            redir_entry->trigger = (flags & 8) > 0;
+
+            ioapic_write(io_apic, IOAPIC_REDIR_TABLE(irq_src - io_apic->base), 
+                    redir_entry->upper);
+            ioapic_write(io_apic, IOAPIC_REDIR_TABLE(irq_src - io_apic->base) + 1, 
+                    redir_entry->lower);
+
+            kfree(redir_entry);
+        }
+    }
+}
+
+void _spurious_empty(interrupt_state_t *r){
+    (void)r;
 }
 
 void apic_enable(void){
-    //Enable the APIC if not already enabled
+    APIC_WRITE(0x350, 0x8700);
+    APIC_WRITE(0x360, 0x400);
+
+    //Enable spurious interrupt
     APIC_WRITE(0xF0, APIC_READ(0xF0) | 0x100);
+}
+
+void apic_ack(void){
+    APIC_WRITE(0xB0, 0);
+}
+
+uint32_t ioapic_read(ioapic_t *io, uint8_t r){
+    *(uint32_t volatile*)io->registers = r;
+    return *(uint32_t volatile*)(io->registers + 0x10);
+}
+
+void ioapic_write(ioapic_t *io, uint8_t r, uint32_t v){
+    *(uint32_t volatile*) io->registers = r;
+    *(uint32_t volatile*)(io->registers + 0x10) = v;
 }

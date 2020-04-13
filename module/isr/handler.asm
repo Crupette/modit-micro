@@ -1,14 +1,8 @@
 BITS 32
 
-[GLOBAL idt_flush]
-idt_flush:
-    mov eax, [esp + 4]
-    lidt [eax]
-    ret
+extern _isr_handler
 
-extern _interrupt_handler
-
-interrupt_common:
+isr_common:
     pusha
     push ds
     push es
@@ -23,7 +17,7 @@ interrupt_common:
     mov ss, ax
 
     push esp
-    call _interrupt_handler
+    call _isr_handler
     add esp, 4
 
     pop gs
@@ -41,7 +35,7 @@ global %1
 %1:
     cli
     push %2
-    jmp interrupt_common
+    jmp isr_common
 %endmacro
 
 %macro ISR_NOCODE 2
@@ -50,7 +44,7 @@ global %1
     cli
     push 0
     push %2
-    jmp interrupt_common
+    jmp isr_common
 %endmacro
 
 ISR_NOCODE  _isr0, 0    ;Divide by 0
@@ -87,19 +81,3 @@ ISR_NOCODE  _isr28, 28
 ISR_NOCODE  _isr29, 29
 ISR_NOCODE  _isr30, 30
 ISR_NOCODE  _isr31, 31
-
-;Requests
-%macro IRQ 1
-global _irq%1
-_irq%1:
-    cli
-    push 0
-    push %1+32
-    jmp interrupt_common
-%endmacro
-
-%assign irqno 0
-%rep (256 - 32)
-IRQ irqno
-%assign irqno irqno+1
-%endrep

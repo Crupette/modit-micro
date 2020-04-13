@@ -4,71 +4,21 @@
 #include "kernel/logging.h"
 #include "kernel/io.h"
 
-typedef struct idt {
-    idt_entry_t entries[256];
-    idt_ptr_t ptr;
-} idt_t;
-
-static idt_t _idt;
-static isr_handler_t _handlers[256] = { 0 };
-
+static isr_handler_t _handlers[224] = { 0 };
 static int interrupt_disable_depth = 0;
 
-void idt_createEntry(uint8_t i, int_handler_t func, uint16_t selector, uint8_t flags){
-    idt_entry_t *entry = &_idt.entries[i];
-    entry->offset_low = (uintptr_t)func & 0xFFFF;
-    entry->offset_high = ((uintptr_t)func >> 16) & 0xFFFF;
-    entry->selector = selector;
-    entry->flags = flags;
+void irq_addHandler(uint8_t i, isr_handler_t handler){
+    if(i < 32) return 0;
+    _handlers[i - 32] = handler;
 }
 
-void idt_addHandler(uint8_t i, isr_handler_t func){
-    _handlers[i] = func;
-}
-
-void _interrupt_handler(interrupt_state_t *state){
-    interrupt_disable_depth++;
+void _irq_handler(interrupt_state_t *state){
+    //vga_printf("Interrupt %x!\n", state->num - 32);
     //Handler must exist to be called
-    if(_handlers[state->num] != 0){
-        _handlers[state->num](state);
-    }else
-    if(state->num >= 32){
-        //IRQ's need to be acknowleged. IRQ's in the secondary PIC need another ack
-        if(state->num > 40){
-            outb(0xA0, 0x20);
-        }
-        outb(0x20, 0x20);
-    }else{
-        uint32_t faddr;
-        asm volatile("mov %%cr2, %0": "=r"(faddr));
-        //Damaging ISR's need to be caught to prevent destructive triple-faults
-        log_printf(LOG_FATAL, "Unhandled exception %i @ %p (if pg @ %x)\n", 
-                state->num, state->eip, faddr);
-        while(true) asm("hlt");
+    if(_handlers[state->num - 32] != 0){
+        _handlers[state->num - 32](state);
     }
-    interrupt_disable_depth--;
-}
-
-static void setup_irq(){
-    //Setup
-    outb(0x20, 0x11);
-    outb(0xA0, 0x11);
-
-    //Remap offset of IDR
-    outb(0x21, 0x20);
-    outb(0xA1, 0x28);
-
-    //Setup cascading
-    outb(0x21, 0x04);
-    outb(0xA1, 0x02);
-
-    //Environment info
-    outb(0x21, 0x01);
-    outb(0xA1, 0x01);
-
-    //Masking
-    outb(0x21, 0x00);
-    outb(0x21, 0x00);
+    apic_ack();
 }
 
 void disable_interrupts(void){
@@ -83,43 +33,7 @@ void enable_interrupts(void){
     if(interrupt_disable_depth < 0) interrupt_disable_depth = 0;
 }
 
-void setup_idt(){
-    _idt.ptr.size = (sizeof(idt_entry_t) * 256) - 1;
-    _idt.ptr.addr = (uintptr_t)&_idt.entries[0];
-
-    //Oh god
-    idt_createEntry(0, _isr0, 0x08, 0x8E);
-    idt_createEntry(1, _isr1, 0x08, 0x8E);
-    idt_createEntry(2, _isr2, 0x08, 0x8E);
-    idt_createEntry(3, _isr3, 0x08, 0x8E);
-    idt_createEntry(4, _isr4, 0x08, 0x8E);
-    idt_createEntry(5, _isr5, 0x08, 0x8E);
-    idt_createEntry(6, _isr6, 0x08, 0x8E);
-    idt_createEntry(7, _isr7, 0x08, 0x8E);
-    idt_createEntry(8, _isr8, 0x08, 0x8E);
-    idt_createEntry(9, _isr9, 0x08, 0x8E);
-    idt_createEntry(10, _isr10, 0x08, 0x8E);
-    idt_createEntry(11, _isr11, 0x08, 0x8E);
-    idt_createEntry(12, _isr12, 0x08, 0x8E);
-    idt_createEntry(13, _isr13, 0x08, 0x8E);
-    idt_createEntry(14, _isr14, 0x08, 0x8E);
-    idt_createEntry(15, _isr15, 0x08, 0x8E);
-    idt_createEntry(16, _isr16, 0x08, 0x8E);
-    idt_createEntry(17, _isr17, 0x08, 0x8E);
-    idt_createEntry(18, _isr18, 0x08, 0x8E);
-    idt_createEntry(19, _isr19, 0x08, 0x8E);
-    idt_createEntry(20, _isr20, 0x08, 0x8E);
-    idt_createEntry(21, _isr21, 0x08, 0x8E);
-    idt_createEntry(22, _isr22, 0x08, 0x8E);
-    idt_createEntry(23, _isr23, 0x08, 0x8E);
-    idt_createEntry(24, _isr24, 0x08, 0x8E);
-    idt_createEntry(25, _isr25, 0x08, 0x8E);
-    idt_createEntry(26, _isr26, 0x08, 0x8E);
-    idt_createEntry(27, _isr27, 0x08, 0x8E);
-    idt_createEntry(28, _isr28, 0x08, 0x8E);
-    idt_createEntry(29, _isr29, 0x08, 0x8E);
-    idt_createEntry(30, _isr30, 0x08, 0x8E);
-    idt_createEntry(31, _isr31, 0x08, 0x8E);
+int irq_init(){
     idt_createEntry(32, _irq0, 0x08, 0x8E);
     idt_createEntry(33, _irq1, 0x08, 0x8E);
     idt_createEntry(34, _irq2, 0x08, 0x8E);
@@ -345,34 +259,20 @@ void setup_idt(){
     idt_createEntry(254, _irq222, 0x08, 0x8E);
     idt_createEntry(255, _irq223, 0x08, 0x8E);
 
-    idt_ptr_t *paddr = &_idt.ptr;
-
-    extern void idt_flush(idt_ptr_t *ptr);
-    idt_flush(paddr);
-    log_printf(LOG_OK, "Setup IDT\n");
-}
-
-extern void idt_flush(idt_ptr_t *idt);
-int interrupt_init(){
-    memset(&_idt, 0, sizeof(_idt));
-
-    setup_irq();
-    setup_idt();
-
-    IRQ_ENABLE;
-    log_printf(LOG_OK, "Loaded Interrupt Structures\n");
+    enable_interrupts();
+    log_printf(LOG_OK, "Setup IRQ hooks\n");
     return 0;
 }
 
-int interrupt_fini(){
-    IRQ_DISABLE;
-    log_printf(LOG_WARNING, "Disabled interrupts: I hope you know what your doing!\n");
+int irq_fini(){
+    log_printf(LOG_WARNING, "Removed IRQ hooks\n");
     return 0;
 }
 
-module_name(interrupt);
+module_name(irq);
 
-module_load(interrupt_init);
-module_unload(interrupt_fini);
+module_load(irq_init);
+module_unload(irq_fini);
 
-module_depends(gdt);
+module_depends(idt);
+module_depends(cpu);
