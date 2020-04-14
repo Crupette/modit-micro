@@ -16,7 +16,7 @@ void _irq_handler(interrupt_state_t *state){
     if(_handlers[state->num - 32] != 0){
         _handlers[state->num - 32](state);
     }
-    apic_ack();
+    //apic_ack();
 }
 
 void disable_interrupts(void){

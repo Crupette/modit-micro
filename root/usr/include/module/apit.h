@@ -10,7 +10,6 @@
 #include "kernel/types.h"
 
 typedef struct clock_hook {
-    char *name;
     void (*hook)(void);
     uint32_t ns;
     int32_t ns_left;
@@ -20,12 +19,15 @@ typedef struct clock_hook {
  *  name:   Name to identify hook
  *  hook:   Function to call when time comes
  *  ns:     Nano-seconds until next call
+ *  r:      Pointer to the clock hook
  * */
-void apit_add_clock(char *name, void (*hook)(void), uint32_t ns);
+clock_hook_t *apit_add_clock(void (*hook)(void), uint32_t ns);
 
 /*  Removes the requested clock hook
- *  name:   Name of hook to remove
+ *  hook:   Pointer to hook to remove
  * */
-void apit_remove_clock(char *name);
+void apit_remove_clock(clock_hook_t *hook);
+
+void apit_adjust_clock(clock_hook_t *hook);
 
 #endif

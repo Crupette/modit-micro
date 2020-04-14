@@ -20,18 +20,17 @@ clock_hook_t *apit_shortest_clock = 0;
 
 list_t *clock_hooks = 0;
 
-void apit_add_clock(char *name, void (*hook)(void), uint32_t ns){
-    uint32_t ns_passed = apic_read(APIC_TMRCURRCNT) / apit_freq_1ns;
-
+clock_hook_t *apit_add_clock(void (*hook)(void), uint32_t ns){
     clock_hook_t *clock = kalloc(sizeof(clock_hook_t));
-    clock->name = name;
     clock->hook = hook;
     clock->ns = ns;
     clock->ns_left = ns;
     list_push(clock_hooks, clock);
 
+    uint32_t ns_passed = apic_read(APIC_TMRCURRCNT) / apit_freq_1ns;
+
     //If it asks for a shorter clock time, we must change the APIT to accomidate
-    if(apit_shortest - ns_passed < ns){
+    if(apit_shortest - ns_passed > ns){
         apic_write(APIC_TMRDIV, 0x3);
         apic_write(APIC_TMRINITCNT, ns * apit_freq_1ns);
         apic_write(APIC_TMRCURRCNT, ns * apit_freq_1ns);
@@ -45,19 +44,24 @@ void apit_add_clock(char *name, void (*hook)(void), uint32_t ns){
         apit_shortest = ns;
         apit_shortest_clock = clock;
     }
+    return clock;
 }
 
-void apit_remove_clock(char *name){
-    clock_hook_t *hook = 0;
-    for(list_node_t *node = clock_hooks->head; node; node = node->next){
-        clock_hook_t *clock = node->data;
-        if(name == clock->name || strcmp(name, clock->name) == 0){
-            hook = clock;
-            break;
-        }
-    }
-
+void apit_adjust_clock(clock_hook_t *hook){
     if(hook == 0) return;
+
+    uint32_t ns_passed = apic_read(APIC_TMRCURRCNT) / apit_freq_1ns;
+
+    if(apit_shortest - ns_passed < hook->ns){
+        apic_write(APIC_TMRDIV, 0x3);
+        apic_write(APIC_TMRINITCNT, hook->ns * apit_freq_1ns);
+        apic_write(APIC_TMRCURRCNT, hook->ns * apit_freq_1ns);
+    }
+}
+
+void apit_remove_clock(clock_hook_t *hook){
+    if(hook == 0) return;
+    list_remove(clock_hooks, hook);
     if(hook == apit_shortest_clock){
         apit_shortest = 0xFFFFFFFF;
         apit_shortest_clock = 0;
@@ -69,21 +73,26 @@ void apit_remove_clock(char *name){
             }
         }
     }
+    kfree(hook);
 }
+
+list_node_t *hook_node = 0;
+clock_hook_t *hook_clock = 0;
 
 void apit_interrupt(interrupt_state_t *r){
     uint32_t ns_passed = apic_read(APIC_TMRINITCNT) / apit_freq_1ns;
     apic_write(APIC_TMRINITCNT, apit_shortest * apit_freq_1ns);
 
-    for(list_node_t *node = clock_hooks->head; node; node = node->next){
-        clock_hook_t *clock = node->data;
-        clock->ns_left -= ns_passed;
+    for(hook_node = clock_hooks->head; hook_node; hook_node = hook_node->next){
+        hook_clock = hook_node->data;
+        hook_clock->ns_left -= ns_passed;
 
-        if(clock->ns_left <= 0){
-            clock->hook();
-            clock->ns_left += clock->ns;
+        if(hook_clock->ns_left <= 0){
+            hook_clock->hook();
+            hook_clock->ns_left += hook_clock->ns;
         }
     }
+    apic_ack();
 }
 
 void one_tick(void){
@@ -127,7 +136,7 @@ int apit_init(){
     clock_hooks = new_list();
 
     irq_addHandler(0, apit_interrupt);
-    apit_add_clock("1s-tick", one_tick, 100000);
+    apit_add_clock(one_tick, 100000);
 
     return 0;
 }
