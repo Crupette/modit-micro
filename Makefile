@@ -33,10 +33,12 @@ kernel: | tools/
 	ln -s ../tools -t $(KRNLDIR) | true
 	ln -s ../../../kernel/include -T root/usr/include/kernel | true
 	$(MAKE) -C $(KRNLDIR) build
+	mkdir -p root/boot
 	cp $(KRNLDIR)/kernel.bin root/boot/kernel.bin
 
 mods: $(MODS)
 $(MODS) : Makefile tools/
+	mkdir -p initrd
 	$(MAKE) -C $@
 
 initrd: mods | Makefile tools/
