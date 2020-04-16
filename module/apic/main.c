@@ -11,9 +11,9 @@
 
 madt_t *acpi_madt = 0;
 list_t *acpi_madt_entries = 0;
-bool apic_enabled = true;
 
 uint8_t volatile *apic_registry = 0;
+bool apic_enabled = true;
 
 void acpi_find_madt(void){
     acpi_madt = (madt_t*)rsdt_find_table("APIC");
@@ -63,6 +63,8 @@ void apic_setup(void){
     virtual_allocator->remappg((void*)0xFEE00000, apic_registry, 0x3);
 
     disable_pic(); 
+
+
 }
 
 void _spurious_empty(interrupt_state_t *r){
@@ -71,6 +73,7 @@ void _spurious_empty(interrupt_state_t *r){
 
 void _gpf_apic_chk(interrupt_state_t *r){
     (void)r;
+    log_printf(LOG_WARNING, "Modules do not support this specific APIC setup\n");
     apic_enabled = false;
 }
 
@@ -140,6 +143,7 @@ module_unload(apic_fini);
 module_depends(acpi);
 module_depends(dthelper);
 module_depends(isr);
+module_depends(irq);
 module_depends(cpu);
 module_depends(heap);
 module_depends(paging);

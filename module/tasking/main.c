@@ -1,4 +1,4 @@
-#include "module/apit.h"
+#include "module/timer.h"
 #include "module/apic/apic.h"
 #include "module/tasking.h"
 #include "module/interrupt.h"
@@ -33,7 +33,7 @@ void task_switch(task_t *curr, task_t *next){
 
     //Change clock to tick towards next task's timeslice
     clock->ns = clock->ns_left = (next->tslice);
-    apit_adjust_clock(clock);
+    timer_adjust_clock(clock);
 
     if(next->new == false){
         //Copy over base and stack pointer
@@ -45,7 +45,7 @@ void task_switch(task_t *curr, task_t *next){
     }else{
         next->new = false;
         //Make sure interrupts are acknowleged, and return from interrupt
-        apic_ack();
+        timer_ack();
         asm volatile("mov esp, %0;\
                 pop gs; \
                 pop fs; \
@@ -121,7 +121,7 @@ int tasking_init(){
     task_newtask(task_loop_b);
     task_newtask(task_loop_c);
 
-    clock = apit_add_clock(tasking_tick, TIME_SLICE_MAX);
+    clock = timer_add_clock(tasking_tick, TIME_SLICE_MAX);
 
     //Temporary idle task for the test
     while(true){

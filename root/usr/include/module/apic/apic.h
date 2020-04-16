@@ -69,6 +69,7 @@ extern list_t *acpi_madt_entries;
 extern list_t *acpi_topology;
 
 extern uint8_t volatile *apic_registry;
+extern bool apic_enabled;
 
 /*  Locates the MADT using the RSDT
  *  Then creates a list of MADT entries in acpi_madt_entries
