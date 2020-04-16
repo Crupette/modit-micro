@@ -1,4 +1,5 @@
 #include "module/apic/apic.h"
+#include "module/pit.h"
 #include "module/timer.h"
 #include "module/interrupt.h"
 #include "module/heap.h"
@@ -14,7 +15,7 @@
 
 static uint32_t base_freq = 0;
 static uint32_t freq_1s = 0;
-static uint32_t freq_1ns = 0;
+static uint32_t freq_1ms = 0;
 
 uint32_t timer_shortest = 0;
 clock_hook_t *shortest_clock = 0;
@@ -25,39 +26,44 @@ bool apic = false;
 
 uint32_t timer_read(void){
     if(apic) return apic_read(APIC_TMRINITCNT);
-    vga_printf("No APIC?\n");
-    return 0;
+    return pit_read_count();
 }
 
 void timer_set(uint32_t count){
     if(apic){
         apic_write(APIC_TMRINITCNT, count);
         apic_write(APIC_TMRCURRCNT, count);
+        return;
     }
+    pit_set_count((uint16_t)count);
 }
 
 void timer_ack(void){
-    if(apic) apic_ack();
+    if(apic) {
+        apic_ack();
+        return;
+    }
+    outb(0x20, 0x20);
 }
 
-clock_hook_t *timer_add_clock(void (*hook)(void), uint32_t ns){
+clock_hook_t *timer_add_clock(void (*hook)(void), uint32_t ms){
     clock_hook_t *clock = kalloc(sizeof(clock_hook_t));
     clock->hook = hook;
-    clock->ns = ns;
-    clock->ns_left = ns;
+    clock->ms = ms;
+    clock->ms_left = ms;
     list_push(clock_hooks, clock);
 
-    uint32_t ns_passed = timer_read() / freq_1ns;
+    uint32_t ms_passed = timer_read() / freq_1ms;
 
     //If it asks for a shorter clock time, we must change the APIT to accomidate
-    if(timer_shortest - ns_passed > ns){
-        timer_set(ns * freq_1ns);
+    if(timer_shortest - ms_passed > ms){
+        timer_set(ms * freq_1ms);
     }
-    if(timer_shortest > ns || shortest_clock == 0){
+    if(timer_shortest > ms || shortest_clock == 0){
         if(shortest_clock == 0){
-            timer_set(ns * freq_1ns);
+            timer_set(ms * freq_1ms);
         }
-        timer_shortest = ns;
+        timer_shortest = ms;
         shortest_clock = clock;
     }
     return clock;
@@ -66,14 +72,14 @@ clock_hook_t *timer_add_clock(void (*hook)(void), uint32_t ns){
 void timer_adjust_clock(clock_hook_t *hook){
     if(hook == 0) return;
 
-    uint32_t ns_passed = timer_read() / freq_1ns;
+    uint32_t ms_passed = timer_read() / freq_1ms;
 
-    if(timer_shortest - ns_passed < hook->ns){
-        timer_set(hook->ns * freq_1ns);
+    if(timer_shortest - ms_passed < hook->ms){
+        timer_set(hook->ms * freq_1ms);
     }
-    if(hook->ns < timer_shortest){
+    if(hook->ms < timer_shortest){
         shortest_clock = hook;
-        timer_shortest = hook->ns;
+        timer_shortest = hook->ms;
     }
 }
 
@@ -85,8 +91,8 @@ void timer_remove_clock(clock_hook_t *hook){
         shortest_clock = 0;
         for(list_node_t *node = clock_hooks->head; node; node = node->next){
             clock_hook_t *clock = node->data;
-            if(clock->ns <= timer_shortest){
-                timer_shortest = clock->ns;
+            if(clock->ms <= timer_shortest){
+                timer_shortest = clock->ms;
                 shortest_clock = clock;
             }
         }
@@ -99,16 +105,16 @@ clock_hook_t *hook_clock = 0;
 
 void timer_interrupt(interrupt_state_t *r){
     (void)r;
-    uint32_t ns_passed = timer_read() / freq_1ns;
-    timer_set(timer_shortest * freq_1ns);
+    uint32_t ms_passed = timer_read() / freq_1ms;
+    timer_set(timer_shortest * freq_1ms);
 
     for(hook_node = clock_hooks->head; hook_node; hook_node = hook_node->next){
         hook_clock = hook_node->data;
-        hook_clock->ns_left -= ns_passed;
+        hook_clock->ms_left -= ms_passed;
 
-        if(hook_clock->ns_left <= 0){
+        if(hook_clock->ms_left <= 0){
             hook_clock->hook();
-            hook_clock->ns_left += hook_clock->ns;
+            hook_clock->ms_left += hook_clock->ms;
         }
     }
     timer_ack();
@@ -149,18 +155,25 @@ int timer_init(){
         apic_timer_count *= 100;
         
         freq_1s = apic_timer_count;
-        freq_1ns = apic_timer_count / 100000;
+        freq_1ms = apic_timer_count / 100000;
         
         apic_write(APIC_TMRDIV, 0x3);
         apic_write(APIC_LVT_TMR, 32);
 
         apic = true;
+    }else{
+        freq_1ms = PIT_BASE_HZ / 100000;
+        freq_1s = 0;
+
+        pit_set_count(0);
+
+        pit_set_mode(0);
     }
     
     clock_hooks = new_list();
 
     irq_addHandler(0, timer_interrupt);
-    timer_add_clock(one_tick, 100000);
+    timer_add_clock(one_tick, 1000);
 
     return 0;
 }
@@ -174,6 +187,7 @@ module_name(timer);
 module_load(timer_init);
 module_unload(timer_fini);
 
+module_depends(pit);
 module_depends(apic);
 module_depends(irq);
 module_depends(heap);

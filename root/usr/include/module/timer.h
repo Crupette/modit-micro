@@ -10,8 +10,8 @@
 
 typedef struct clock_hook {
     void (*hook)(void);
-    uint32_t ns;
-    int32_t ns_left;
+    uint32_t ms;
+    int32_t ms_left;
 } clock_hook_t;
 
 /*  Adds a clock hook to be called every [ns] nanoseconds
@@ -20,7 +20,7 @@ typedef struct clock_hook {
  *  ns:     Nano-seconds until next call
  *  r:      Pointer to the clock hook
  * */
-clock_hook_t *timer_add_clock(void (*hook)(void), uint32_t ns);
+clock_hook_t *timer_add_clock(void (*hook)(void), uint32_t ms);
 
 /*  Removes the requested clock hook
  *  hook:   Pointer to hook to remove

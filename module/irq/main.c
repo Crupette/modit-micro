@@ -15,8 +15,13 @@ void _irq_handler(interrupt_state_t *state){
     //Handler must exist to be called
     if(_handlers[state->num - 32] != 0){
         _handlers[state->num - 32](state);
+    }else{
+        if(state->num - 32 >= 8){
+            outb(0xA0, 0x20);
+        }
+        outb(0x20, 0x20);
+        //apic_ack();
     }
-    //apic_ack();
 }
 
 void disable_interrupts(void){
@@ -274,6 +279,7 @@ int irq_init(){
 
     enable_interrupts();
     log_printf(LOG_OK, "Setup IRQ hooks\n");
+
     return 0;
 }
 
@@ -288,4 +294,3 @@ module_load(irq_init);
 module_unload(irq_fini);
 
 module_depends(idt);
-module_depends(apic);

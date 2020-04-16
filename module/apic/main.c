@@ -38,11 +38,11 @@ void acpi_find_madt(void){
 }
 
 static void disable_pic(){
-    outb(0x20, 0x20);
-    outb(0xA0, 0x20);
+    //outb(0x20, 0x20);
+    //outb(0xA0, 0x20);
 
-    outb(0x21, 0xFF);
-    outb(0xA1, 0xFF);
+    //outb(0x21, 0xFF);
+    //outb(0xA1, 0xFF);
 }
 
 bool check_apic(void){
@@ -61,10 +61,6 @@ void apic_setup(void){
     //TODO: Replace remap with mmio funcs
     apic_registry = kalloc_a(0x1000, 0x1000);
     virtual_allocator->remappg((void*)0xFEE00000, apic_registry, 0x3);
-
-    disable_pic(); 
-
-
 }
 
 void _spurious_empty(interrupt_state_t *r){
@@ -72,26 +68,26 @@ void _spurious_empty(interrupt_state_t *r){
 }
 
 void _gpf_apic_chk(interrupt_state_t *r){
-    (void)r;
     log_printf(LOG_WARNING, "Modules do not support this specific APIC setup\n");
     apic_enabled = false;
+    r->eip += 2;
 }
 
 void apic_enable(void){
-    APIC_WRITE(0xE0, 0xFFFFFFFF);
-    APIC_WRITE(0xD0, (APIC_READ(0xD0) & 0x00FFFFFF) | 1);
-    APIC_WRITE(0x320, 0x10000); //Disable timer
-    APIC_WRITE(0x340, 4 << 8);
-    APIC_WRITE(0x350, 0x10000);
-    APIC_WRITE(0x360, 0x10000);
-    APIC_WRITE(0x80, 0);
-
-    isr_addHandler(0x13, _gpf_apic_chk);
+    isr_addHandler(13, _gpf_apic_chk);
 
     uint32_t eax, edx;
     cpu_read_msr(0x1B, &eax, &edx);
-    
+    cpu_write_msr(0x1B, eax, edx);
+
     if(apic_enabled){
+        APIC_WRITE(0xE0, 0xFFFFFFFF);
+        APIC_WRITE(0xD0, (APIC_READ(0xD0) & 0x00FFFFFF) | 1);
+        APIC_WRITE(0x320, 0x10000); //Disable timer
+        APIC_WRITE(0x340, 4 << 8);
+        APIC_WRITE(0x350, 0x10000);
+        APIC_WRITE(0x360, 0x10000);
+        APIC_WRITE(0x80, 0);
 
         eax |= 0x800;
 
@@ -99,11 +95,13 @@ void apic_enable(void){
             eax,
             edx);
 
+        disable_pic(); 
+
         //Enable spurious interrupt
         APIC_WRITE(0xF0, APIC_READ(0xF0) | 0x100);
     }
 
-    isr_addHandler(0x13, 0);
+    isr_addHandler(13, 0);
 }
 
 void apic_ack(void){

@@ -32,7 +32,7 @@ void task_switch(task_t *curr, task_t *next){
     current_task = current_task->next;
 
     //Change clock to tick towards next task's timeslice
-    clock->ns = clock->ns_left = (next->tslice);
+    clock->ms = clock->ms_left = (next->tslice);
     timer_adjust_clock(clock);
 
     if(next->new == false){
@@ -141,7 +141,6 @@ module_load(tasking_init);
 module_unload(tasking_fini);
 
 module_depends(timer);
-module_depends(apic);
 module_depends(irq);
 module_depends(heap);
 module_depends(dthelper);
