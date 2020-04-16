@@ -1,6 +1,7 @@
 #include "module/datatype/list.h"
 #include "module/heap.h"
 
+#include "kernel/io.h"
 #include "kernel/logging.h"
 
 static inline list_t *_list_allocator(bool r){
@@ -24,7 +25,7 @@ list_t *new_round_list(void){
 
 void delete_list(list_t *list){
     if(list == 0) return;
-    if(list->head == list->tail == 0){
+    if(list->head == list->tail && list->head == 0){
         kfree(list);
         return;
     }
@@ -147,7 +148,7 @@ int list_find(list_t *list, void *data){
 
 void list_delete(list_t *list, size_t i){
     if(list == 0) return;
-    if(i == -1) return;
+    if((int)i == -1) return;
     list_node_t *node = 0;
     for(node = list->head; node, i; node = node->next, i--) { }
 

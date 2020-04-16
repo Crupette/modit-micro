@@ -1,5 +1,3 @@
-#include "module/cpu/acpi.h"
-#include "module/cpu/apic.h"
 #include "module/cpu.h"
 #include "module/interrupt.h"
 
@@ -41,6 +39,7 @@ void cpu_write_msr(uint32_t id, uint32_t lo, uint32_t hi){
 }
 
 void _invl_opcode_hook(interrupt_state_t *state){
+    (void)state;
     cpuid_supported = false;
 }
 
@@ -60,18 +59,6 @@ int cpu_init(){
     isr_addHandler(6, 0);
 
     msr_supported = cpu_chk_msr();
-
-    load_rsdp();
-    load_rsdt();
-
-    acpi_find_madt();
-    acpi_find_topology();
-
-    apic_setup();
-
-    //Enabling the APIC will be dealt with in a second stage module
-    //Right now, it's dealt with here
-    apic_enable();
 
     return 0;
 }

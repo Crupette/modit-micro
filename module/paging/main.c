@@ -107,7 +107,6 @@ page_directory_t *swpdir(page_directory_t *dir){
 }
 
 void clonetbl(page_directory_t *parent, page_table_t *tbl, uint16_t index){
-    vga_printf("Cloning table @ %i (%x)\n", index, parent->tablesPhys[index].entry);
     uint32_t paddr = parent->tablesPhys[index].entry & 0xFFFFF000;
 
     page_table_t *newtbl = kalloc_a(0x1000, 0x1000);
@@ -153,8 +152,6 @@ page_directory_t *clonedir(page_directory_t *dir){
     new->tablesPhys[1023].entry = (uintptr_t)(new) | 0x3;
     new->tables[1023] = (page_table_t*)new;
 
-    vga_printf("Copied kernel tables\n");
-
     //Copy rest of tables
     for(int i = 0; i < 864; i++){
         if(dir->tables[i] == 0) continue;
@@ -163,8 +160,6 @@ page_directory_t *clonedir(page_directory_t *dir){
         new->tables[i] = (page_table_t*)((i * 0x1000) + 0xFFC00000);
         clonetbl(new, dir->tables[i], i);
     }
-
-    vga_printf("Copied directory\n");
 
     return new;
 }

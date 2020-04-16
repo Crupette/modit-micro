@@ -60,7 +60,7 @@ static void remove_bin(bin_header_t *bin){
     if(bin->next != 0) bin->next->prev = bin->prev;
     if(bin->prev != 0) bin->prev->next = bin->next;
 
-    if(bin_head == bin_tail == bin){
+    if(bin_head == bin_tail && bin_head == bin){
         return;
     }
     if(bin_head == bin) bin_head = bin->next;

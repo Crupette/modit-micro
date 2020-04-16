@@ -1,13 +1,15 @@
 #include "module/apit.h"
-#include "module/cpu/apic.h"
+#include "module/apic/apic.h"
 #include "module/tasking.h"
 #include "module/interrupt.h"
 #include "module/datatype/list.h"
+#include "module/heap.h"
 
 #include "kernel/modloader.h"
 #include "kernel/memory.h"
 #include "kernel/logging.h"
 #include "kernel/io.h"
+#include "kernel/vgaterm.h"
 
 list_t *task_order = 0;
 clock_hook_t *clock = 0;
@@ -71,8 +73,8 @@ void task_newtask(void (*func)(void)){
     //Save states for new task execution
     interrupt_state_t newstate = { 0 };
     newstate.eax = newstate.ebx = newstate.ecx = newstate.edx = newstate.esi = newstate.edi = 0;
-    newstate.eip = func;
-    newstate.esp = newstate.ebp = task->ksp;
+    newstate.eip = (uintptr_t)func;
+    newstate.esp = newstate.ebp = (uintptr_t)task->ksp;
     newstate.ds = newstate.es = newstate.es = newstate.fs = newstate.gs = newstate.ss = 0x10;
     newstate.cs = 0x8;
     newstate.eflags = 0 | (1 << 9); //INT_ENABLE
@@ -138,8 +140,8 @@ module_name(tasking);
 module_load(tasking_init);
 module_unload(tasking_fini);
 
-module_depends(cpu);
-module_depends(apit);
+module_depends(timer);
+module_depends(apic);
 module_depends(irq);
 module_depends(heap);
 module_depends(dthelper);

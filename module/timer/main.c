@@ -1,6 +1,7 @@
-#include "module/cpu/apic.h"
+#include "module/apic/apic.h"
 #include "module/apit.h"
 #include "module/interrupt.h"
+#include "module/heap.h"
 
 #include "kernel/modloader.h"
 #include "kernel/logging.h"
@@ -80,6 +81,7 @@ list_node_t *hook_node = 0;
 clock_hook_t *hook_clock = 0;
 
 void apit_interrupt(interrupt_state_t *r){
+    (void)r;
     uint32_t ns_passed = apic_read(APIC_TMRINITCNT) / apit_freq_1ns;
     apic_write(APIC_TMRINITCNT, apit_shortest * apit_freq_1ns);
 
@@ -98,7 +100,7 @@ void apit_interrupt(interrupt_state_t *r){
 void one_tick(void){
 }
 
-int apit_init(){
+int timer_init(){
     apic_write(APIC_TMRDIV, 0x3);
     apic_write(APIC_LVT_TMR, 32);
 
@@ -124,7 +126,6 @@ int apit_init(){
     uint32_t apic_timer_count = 0xFFFFFFFF - apic_read(APIC_TMRCURRCNT);
     apit_base_freq = apic_timer_count;
 
-    apic_timer_count << 4;
     apic_timer_count *= 100;
 
     apit_freq_1s = apic_timer_count;
@@ -141,16 +142,16 @@ int apit_init(){
     return 0;
 }
 
-int apit_fini(){
+int timer_fini(){
     return 0;
 }
 
-module_name(apit);
+module_name(timer);
 
-module_load(apit_init);
-module_unload(apit_fini);
+module_load(timer_init);
+module_unload(timer_fini);
 
-module_depends(cpu);
+module_depends(apic);
 module_depends(irq);
 module_depends(heap);
 module_depends(dthelper);

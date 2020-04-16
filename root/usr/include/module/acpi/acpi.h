@@ -1,4 +1,4 @@
-/*  ACPI.H -    Functions to interact with the ACPI and the FADT
+/*  ACPI.H -    Functions to interact with the ACPI
  *
  *  Author: Crupette
  * */
@@ -8,14 +8,6 @@
 
 #include "kernel/types.h"
 #include <stdbool.h>
-
-typedef struct rsdpdesc {
-    char sig[8];    //Contains "RSD PTR "
-    uint8_t chksum; //Checksum
-    char oemid[6];  //OEM ID
-    uint8_t rev;    //Revision
-    uint32_t rsdt_addr; //Address to the FADT
-} __attribute__((packed)) rsdp_descriptor_t;
 
 typedef struct acpisdthdr {
     char sig[4];    //FACP
@@ -101,24 +93,6 @@ typedef struct fadt {
 
     //Not supporting extended ACPI yet. Keep it 1.0
 } fadt_t;
-
-extern rsdp_descriptor_t *rsdp_descriptor;
-extern uintptr_t *rsdt_ptrs;
-extern size_t rsdt_entries;
-
-/*  Loads the Root System Description Pointer into rsdp_descriptor
- * */
-void load_rsdp(void);
-
-/*  Loads the Root System Description Table into rsdt_start
- * */
-void load_rsdt(void);
-
-/*  Finds the requested DT using signature bytes
- *  sig:    Signature of the table
- *  r:      Address of table
- * */
-void *rsdt_find_table(char *sig);
 
 /*  Checks if the table is valid by confirming the table's checksum
  *  header: Header to validate

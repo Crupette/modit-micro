@@ -1,4 +1,4 @@
-#include "module/cpu/acpi.h"
+#include "module/acpi/rsdt.h"
 #include "module/heap.h"
 
 #include "kernel/io.h"
@@ -60,6 +60,7 @@ void load_rsdt(void){
     physical_allocator->resvpg((void*)rsdt_phys);
 
     void *start = kalloc_a(0x1000, 0x1000);
+    //TODO: Replace with mmio function
     virtual_allocator->remappg((void*)rsdt_phys, start, 0x3);
     void *rsdt_start = (void*)((uintptr_t)start + (rsdt_phys % 0x1000));
     
@@ -88,6 +89,7 @@ void load_rsdt(void){
         void *remap_phys = (void*)(min_range + i);
         physical_allocator->resvpg(remap_phys);
         //Page trickery to remap pages of the heap to desirable physical memory locations
+        //TODO: Replace with mmio function
         virtual_allocator->remappg(remap_phys, (void*)((uintptr_t)rsdt_remap + i), 0x3);
     }
 
@@ -111,10 +113,3 @@ void *rsdt_find_table(char *sig){
 }
 
 
-bool validate_acpi_table(acpi_sdt_hdr_t *header){
-    uint8_t sum = 0;
-    for(uint32_t i = 0; i < header->len; i++){
-        sum += ((char*)header)[i];
-    }
-    return sum == 0;
-}

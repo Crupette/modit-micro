@@ -5,7 +5,7 @@
 #ifndef MODULE_CPU_APIC_H
 #define MODULE_CPU_APIC_H 1
 
-#include "module/cpu/acpi.h"
+#include "module/acpi/acpi.h"
 #include "module/datatype/list.h"
 
 #include "kernel/types.h"

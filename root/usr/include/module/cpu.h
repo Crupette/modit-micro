@@ -6,6 +6,9 @@
 #ifndef MODULE_CPU_H
 #define MODULE_CPU_H 1
 
+#include "kernel/types.h"
+#include <stdbool.h>
+
 /*  CPUID features flags
  *  taken from https://wiki.osdev.org/CPUID
  * */

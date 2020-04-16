@@ -5,7 +5,7 @@
 
 #include <stdarg.h>
 
-char *l_itoa(char *buf, uint32_t n, uint32_t base, bool s, bool caps){
+char *l_itoa(char *buf, int32_t n, uint32_t base, bool s, bool caps){
     size_t i = 0, dec = 1;
     if(n < 0 && s){
         n = 0 - n;

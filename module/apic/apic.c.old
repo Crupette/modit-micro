@@ -11,9 +11,6 @@ madt_t *acpi_madt = 0;
 
 list_t *acpi_madt_entries = 0;
 
-list_t *acpi_topology = 0;
-list_t *ioapics = 0;
-
 uint8_t volatile *apic_registry = 0;
 
 void acpi_find_madt(void){
