@@ -15,7 +15,8 @@
 
 static uint32_t base_freq = 0;
 static uint32_t freq_1s = 0;
-static uint32_t freq_1ms = 0;
+static float freq_1ms = 0;
+static uint32_t ms_1ms = 0;
 
 uint32_t timer_shortest = 0;
 clock_hook_t *shortest_clock = 0;
@@ -46,7 +47,7 @@ void timer_ack(void){
     outb(0x20, 0x20);
 }
 
-clock_hook_t *timer_add_clock(void (*hook)(void), uint32_t ms){
+clock_hook_t *timer_add_clock(void (*hook)(void), float ms){
     clock_hook_t *clock = kalloc(sizeof(clock_hook_t));
     clock->hook = hook;
     clock->ms = ms;
@@ -56,12 +57,12 @@ clock_hook_t *timer_add_clock(void (*hook)(void), uint32_t ms){
     uint32_t ms_passed = timer_read() / freq_1ms;
 
     //If it asks for a shorter clock time, we must change the APIT to accomidate
-    if(timer_shortest - ms_passed > ms){
-        timer_set(ms * freq_1ms);
+    if((timer_shortest * ms_1ms) - ms_passed > (ms * ms_1ms)){
+        timer_set((ms * ms_1ms) * freq_1ms);
     }
     if(timer_shortest > ms || shortest_clock == 0){
         if(shortest_clock == 0){
-            timer_set(ms * freq_1ms);
+            timer_set(ms * ms_1ms * freq_1ms);
         }
         timer_shortest = ms;
         shortest_clock = clock;
@@ -74,8 +75,8 @@ void timer_adjust_clock(clock_hook_t *hook){
 
     uint32_t ms_passed = timer_read() / freq_1ms;
 
-    if(timer_shortest - ms_passed < hook->ms){
-        timer_set(hook->ms * freq_1ms);
+    if((timer_shortest * ms_1ms) - ms_passed < hook->ms * ms_1ms){
+        timer_set(hook->ms * ms_1ms * freq_1ms);
     }
     if(hook->ms < timer_shortest){
         shortest_clock = hook;
@@ -106,11 +107,11 @@ clock_hook_t *hook_clock = 0;
 void timer_interrupt(interrupt_state_t *r){
     (void)r;
     uint32_t ms_passed = timer_read() / freq_1ms;
-    timer_set(timer_shortest * freq_1ms);
+    timer_set(timer_shortest * freq_1ms * ms_1ms);
 
     for(hook_node = clock_hooks->head; hook_node; hook_node = hook_node->next){
         hook_clock = hook_node->data;
-        hook_clock->ms_left -= ms_passed;
+        hook_clock->ms_left -= ms_passed / ms_1ms;
 
         if(hook_clock->ms_left <= 0){
             hook_clock->hook();
@@ -155,8 +156,9 @@ int timer_init(){
         apic_timer_count *= 100;
         
         freq_1s = apic_timer_count;
-        freq_1ms = apic_timer_count / 100000;
-        
+        freq_1ms = apic_timer_count / 1000000;
+        ms_1ms = 1000.f;
+            
         apic_write(APIC_TMRDIV, 0x3);
         apic_write(APIC_LVT_TMR, 32);
 
@@ -164,16 +166,18 @@ int timer_init(){
     }else{
         freq_1ms = PIT_BASE_HZ / 100000;
         freq_1s = 0;
+        ms_1ms = 1;
 
         pit_set_count(0);
 
         pit_set_mode(0);
+        
     }
     
     clock_hooks = new_list();
 
     irq_addHandler(0, timer_interrupt);
-    timer_add_clock(one_tick, 1000);
+    timer_add_clock(one_tick, 1000.f);
 
     return 0;
 }

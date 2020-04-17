@@ -10,20 +10,24 @@
 #include "kernel/logging.h"
 #include "kernel/io.h"
 #include "kernel/vgaterm.h"
+#include "kernel/lock.h"
 
 list_t *task_order = 0;
 clock_hook_t *clock = 0;
 
 list_node_t *current_task = 0;
 
-#define TIME_SLICE_MAX 100
+extern DECLARE_LOCK(vga_op_lock);
+
+#define TIME_SLICE_MAX 5.f
 
 void task_switch(task_t *curr, task_t *next){
     //Save previous EBP and ESP
-    asm volatile("mov %0, ebp; \
-                  nop": "=r"(curr->kbp));
-    asm volatile("mov %0, esp; \
-                  nop": "=r"(curr->ksp));
+    asm volatile("mov eax, ebp; \
+                  mov ebx, esp; \
+                  mov %0, eax; \
+                  mov %1, ebx": 
+                  "=r"(curr->kbp), "=r"(curr->ksp));
     
     if(next->dir != virtual_allocator->currentDirectory){
             curr->dir = virtual_allocator->swpdir(next->dir);
@@ -34,24 +38,27 @@ void task_switch(task_t *curr, task_t *next){
     //Change clock to tick towards next task's timeslice
     clock->ms = clock->ms_left = (next->tslice);
     timer_adjust_clock(clock);
-
+    
     if(next->new == false){
         //Copy over base and stack pointer
         asm volatile("mov eax, %0; \
                       mov ebx, %1; \
                       mov ebp, ebx; \
-                      mov esp, eax; \
-                      nop":: "r"(next->ksp), "r"(next->kbp));
+                      mov esp, eax"
+                      :: "r"(next->ksp), "r"(next->kbp));
+        return;
     }else{
         next->new = false;
+        curr->new = false;  //Yay weird hardware!
         //Make sure interrupts are acknowleged, and return from interrupt
         timer_ack();
+
         asm volatile("mov esp, %0;\
                 pop gs; \
                 pop fs; \
                 pop es; \
                 pop ds; \
-                popa; \
+                popad; \
                 add esp, 8; \
                 iret" :: "r"(next->ksp));
     }
@@ -66,7 +73,8 @@ void task_newtask(void (*func)(void)){
     task_t *task = kalloc(sizeof(task_t));
     task->tslice = TIME_SLICE_MAX;
     task->priority = 0;
-    task->ksp = (kalloc(0x4000) + 0x3FFF);  //Kernel stack : 4KiB
+    task->ksp = (kalloc(0x4000) + 0x4000);  //Kernel stack : 4KiB
+    memset((uintptr_t)task->ksp - 0x4000, 0, 0x4000);
     task->new = true;
     task->dir = virtual_allocator->clonedir(virtual_allocator->currentDirectory);
 
@@ -74,7 +82,10 @@ void task_newtask(void (*func)(void)){
     interrupt_state_t newstate = { 0 };
     newstate.eax = newstate.ebx = newstate.ecx = newstate.edx = newstate.esi = newstate.edi = 0;
     newstate.eip = (uintptr_t)func;
-    newstate.esp = newstate.ebp = (uintptr_t)task->ksp;
+    newstate.usresp = (uintptr_t)task->ksp;
+    //UESP, SS, FLG, CS, EIP, NUM, ERR, AX, CX, DX, BX, SP, BP, SI, DI
+    newstate.esp = newstate.usresp - 28;
+    newstate.ebp = 0;
     newstate.ds = newstate.es = newstate.es = newstate.fs = newstate.gs = newstate.ss = 0x10;
     newstate.cs = 0x8;
     newstate.eflags = 0 | (1 << 9); //INT_ENABLE

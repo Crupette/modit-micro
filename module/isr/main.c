@@ -11,17 +11,57 @@ void isr_addHandler(uint8_t i, isr_handler_t handler){
     _handlers[i] = handler;
 }
 
+void _unhandled_exception(interrupt_state_t *s){
+    switch(s->num){
+        case 0:
+            __panic(s, "Unhandled Divide by Zero Error @ %p\n", s->eip);
+        break;
+        case 2:
+            __panic(s, "Unhandled NMI\n");
+        break;
+        case 4:
+            __panic(s, "Unhandled Overflow exception @ %p\n", s->eip);
+        break;
+        case 5:
+            __panic(s, "Unhandled Bound Range Exceeded exception @ %p\n", s->eip);
+        break;
+        case 6:
+            __panic(s, "Unhandled Invalid Opcode exception @ %p\n", s->eip);
+        break;
+        case 7:
+            __panic(s, "Unhandled DNA @ %p\n", s->eip);
+        break;
+        case 8:
+            __panic(s, "Unhandled Double Fault exception");
+        break;
+        case 10:
+            __panic(s, "Unhandled Invalid TSS exception (%i)\n", s->err);
+        break;
+        case 11:
+            __panic(s, "Unhandled Segment Not Present exception (%i)\n", s->err);
+        break;
+        case 12:
+            __panic(s, "Unhandled Stack Segment Fault (%i)\n", s->err);
+        break;
+        case 13:
+            __panic(s, "Unhandled General Protection Fault (%i)\n", s->err);
+        break;
+        case 14:
+            __panic(s, "Unhandled Page Fault @ %p (err %i)\n", s->eip, s->err);
+        break;
+        default:
+            __panic(s, "Unhandled Unknown exception @ %p (err %i)\n", s->eip, s->err);
+        break;
+    }
+}
+
 void _isr_handler(interrupt_state_t *state){
     //Handler must exist to be called
     if(_handlers[state->num] != 0){
         _handlers[state->num](state);
-    }else{ 
-        uint32_t faddr;
-        asm volatile("mov %%cr2, %0": "=r"(faddr));
-        //Damaging ISR's need to be caught to prevent destructive triple-faults
-        log_printf(LOG_FATAL, "Unhandled exception %i @ %p (if pg @ %x)\n", 
-                state->num, state->eip, faddr);
-        while(true) asm("hlt");
+    }else{
+        //_unhandled_exception(state);
+        asm("hlt");
     }
 }
 
@@ -74,3 +114,4 @@ module_load(isr_init);
 module_unload(isr_fini);
 
 module_depends(idt);
+module_depends(panic);

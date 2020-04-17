@@ -3,7 +3,8 @@ BITS 32
 extern _isr_handler
 
 isr_common:
-    pusha
+    pushad    
+    
     push ds
     push es
     push fs
@@ -16,6 +17,8 @@ isr_common:
     mov gs, ax
     mov ss, ax
 
+    cld
+
     push esp
     call _isr_handler
     add esp, 4
@@ -25,7 +28,7 @@ isr_common:
     pop es
     pop ds
 
-    popa
+    popad
 
     add esp, 8
     iret

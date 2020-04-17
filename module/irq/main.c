@@ -3,6 +3,7 @@
 #include "kernel/modloader.h"
 #include "kernel/logging.h"
 #include "kernel/io.h"
+#include "kernel/lock.h"
 
 static isr_handler_t _handlers[224] = { 0 };
 static int interrupt_disable_depth = 0;

@@ -168,8 +168,7 @@ void pfHandler(interrupt_state_t *r){
     uint32_t faddr;
     asm volatile("mov %%cr2, %0": "=r"(faddr));
 
-    vga_printf("Page fault : %i @ %x (%x)\n", r->err, faddr, r->eip);
-    asm volatile("hlt");
+    __panic(r, "Page fault : %i @ %x (%x)\n", r->err, faddr, r->eip);
 }
 
 int paging_init(){
@@ -207,6 +206,7 @@ module_name(pager);
 module_load(paging_init);
 module_unload(paging_fini);
 
+module_depends(panic);
 module_depends(idt);
 module_depends(isr);
 module_depends(heap);

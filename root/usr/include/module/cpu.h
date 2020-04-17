@@ -72,6 +72,14 @@ enum {
     CPUID_FEAT_EDX_PBE          = 1 << 31
 };
 
+struct x86_cpu_context {
+    
+};
+
+#ifdef BITS32
+typedef struct x86_cpu_context cpu_context_t;
+#endif
+
 /*  Wrapper for cpuid instruction
  *  cpuid: Issues a single request for cpuid, stores EAX in a, EDX in b
  *      code:   Command to issue to cpuid

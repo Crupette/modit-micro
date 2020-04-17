@@ -3,7 +3,7 @@ BITS 32
 extern _irq_handler
 
 irq_common:
-    pusha
+    pushad
     push ds
     push es
     push fs
@@ -16,6 +16,8 @@ irq_common:
     mov gs, ax
     mov ss, ax
 
+    cld
+
     push esp
     call _irq_handler
     add esp, 4
@@ -25,7 +27,7 @@ irq_common:
     pop es
     pop ds
 
-    popa
+    popad
 
     add esp, 8
     iret
