@@ -5,19 +5,24 @@
 #include "kernel/memory.h"
 #include "kernel/logging.h"
 #include "kernel/io.h"
+#include "kernel/lock.h"
+
+DECLARE_LOCK(page_lock) = 0;
 
 void invlpg(void *addr){
     asm volatile("invlpg (%0)":: "r"(addr) : "memory");
 }
 
 void invldir(){
-    asm volatile("movl %%cr3, %0":: "r"(
+    asm volatile("movl %0, %%cr3":: "r"(
                 virtual_allocator->currentDirectory->phys));
 }
 
 page_t remappg(void* phys, void *virt, uint32_t flags){
     uint16_t dindex = (uint32_t)virt >> 22;
     uint16_t tindex = ((uint32_t)virt >> 12) & 0x3FF;
+
+    LOCK(page_lock);
 
     page_directory_t *dir = virtual_allocator->currentDirectory;
     page_table_t *tbl = dir->tables[dindex];
@@ -28,12 +33,15 @@ page_t remappg(void* phys, void *virt, uint32_t flags){
         dir->tablesPhys[dindex].entry = (uintptr_t)tbl_phys | flags;
         dir->tables[dindex] = (page_table_t*)((dindex * 0x1000) + 0xFFC00000);
         tbl = dir->tables[dindex];
+        invlpg(dir->tables[dindex]);
 
-        memset(tbl, 0, sizeof(tbl));
+        memset(tbl, 0, sizeof(*tbl));
     }
     page_t ret = tbl->pages[tindex];
     tbl->pages[tindex].entry = ((uintptr_t)phys) | (flags & 0xFFF);
     invlpg(virt);
+
+    UNLOCK(page_lock);
     return ret;
 }
 
@@ -145,12 +153,10 @@ page_directory_t *clonedir(page_directory_t *dir){
     memset(new, 0, sizeof(page_directory_t));
 
     //Map kernel page table entries
-    for(int i = 864; i < 1024; i++){
+    for(int i = 864; i < 1023; i++){
         new->tables[i] = dir->tables[i];
         new->tablesPhys[i] = dir->tablesPhys[i];
     }
-    new->tablesPhys[1023].entry = (uintptr_t)(new) | 0x3;
-    new->tables[1023] = (page_table_t*)new;
 
     //Copy rest of tables
     for(int i = 0; i < 864; i++){
@@ -161,14 +167,31 @@ page_directory_t *clonedir(page_directory_t *dir){
         clonetbl(new, dir->tables[i], i);
     }
 
+    new->tablesPhys[1023].entry = virtual_allocator->getphys(new) | 0x3;
+    new->tables[1023] = (page_table_t*)new;
+    new->phys = virtual_allocator->getphys(new);
+
     return new;
 }
+
+char *fault_possibles[] = {
+    "non-present",  //r->err & 0
+    "present",
+    "read from",    //((r->err & 2) >> 1) + 2
+    "wrote to",
+    "kernel",       //((r->err & 4) >> 2) + 2
+    "user"
+};
 
 void pfHandler(interrupt_state_t *r){
     uint32_t faddr;
     asm volatile("mov %%cr2, %0": "=r"(faddr));
 
-    __panic(r, "Page fault : %i @ %x (%x)\n", r->err, faddr, r->eip);
+    __panic(r, "Page fault : %s %s %s page @ %x\n",
+            fault_possibles[((r->err & 0x4) >> 2) + 4],
+            fault_possibles[((r->err & 0x2) >> 1) + 2],
+            fault_possibles[((r->err & 0x1) >> 0) + 0],
+            faddr);
 }
 
 int paging_init(){

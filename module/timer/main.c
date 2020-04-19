@@ -54,7 +54,7 @@ clock_hook_t *timer_add_clock(void (*hook)(void), float ms){
     clock->ms_left = ms;
     list_push(clock_hooks, clock);
 
-    uint32_t ms_passed = timer_read() / freq_1ms;
+    uint32_t ms_passed = (timer_read() / freq_1ms) / ms_1ms;
 
     //If it asks for a shorter clock time, we must change the APIT to accomidate
     if((timer_shortest * ms_1ms) - ms_passed > (ms * ms_1ms)){

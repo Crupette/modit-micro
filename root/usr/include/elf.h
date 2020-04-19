@@ -53,6 +53,12 @@ struct elf32_ehdr {
 #define EI_ABIVER   8   //ABI Version
 #define EI_PAD      9   //Padding
 
+#define EM_NONE     0   //No machine
+#define EM_SPARC    2   //SPARC
+#define EM_386      3   //Intel 80386
+#define EM_SPARC32PLUS  18  //Sun SPARC 32+
+#define EM_SPARCV9  43  //SPARC V.9
+
 #define EV_NONE     0   //Invalid version
 #define EV_CURRENT  1   //Current version
 

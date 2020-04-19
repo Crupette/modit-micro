@@ -1,6 +1,7 @@
 *.o
 *.ko
 *.d
+*.a
 *.swp
 *.swo
 root/usr/include/kernel

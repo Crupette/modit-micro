@@ -5,6 +5,9 @@
 #include "kernel/memory.h"
 #include "kernel/logging.h"
 #include "kernel/io.h"
+#include "kernel/lock.h"
+
+DECLARE_LOCK(heap_lock) = 0;
 
 static bin_header_t *bin_tail;
 static bin_header_t *bin_head;
@@ -146,6 +149,8 @@ void *kalloc_a(size_t s, uint32_t a){
     }
     size_t rsize = ((s + 15) / 16) * 16;
 
+    LOCK(heap_lock);
+
     bin_header_t *bestbin = 0;
     for(bin_header_t *bin = bin_head; bin; bin = bin->next){
         if(bin->taken != 0) continue;
@@ -177,6 +182,7 @@ void *kalloc_a(size_t s, uint32_t a){
     split_bin(bestbin, rsize);
     bestbin->taken = 1;
 
+    UNLOCK(heap_lock);
     return bestbin->addr;
 }
 
@@ -184,6 +190,7 @@ void *kalloc(size_t s){
     if(s == 0) return 0;
     size_t rsize = ((s + 15) / 16) * 16;
 
+    LOCK(heap_lock);
     bin_header_t *bestbin = find_best_fit(rsize);
     if(bestbin == 0){
         if(bin_tail->taken == 1){
@@ -196,17 +203,21 @@ void *kalloc(size_t s){
     split_bin(bestbin, rsize);
 
     bestbin->taken = 1;
+    UNLOCK(heap_lock);
     return bestbin->addr;
 }
 
 void kfree(void *p){
+    LOCK(heap_lock);
     for(bin_header_t *bin = bin_head; bin->next; bin = bin->next){
         if(bin->addr == p){
             bin->taken = 0;
             merge_bin(bin);
+            UNLOCK(heap_lock);
             return;
         }
     }
+    UNLOCK(heap_lock);
 }
 
 int heap_init(){

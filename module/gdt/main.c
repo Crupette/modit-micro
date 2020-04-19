@@ -22,6 +22,8 @@ gdt_descriptor_t _gdtd = {
     .addr = 0, .size = 0
 };
 
+tss_entry_t tss_entry = { 0 };
+
 void add_gdt(uint8_t i, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags){
     gdt_entry_t *entry = &_gdts[i];
     
@@ -36,6 +38,25 @@ void add_gdt(uint8_t i, uint32_t base, uint32_t limit, uint8_t access, uint8_t f
     entry->flags |= (flags & 0xF0);
 }
 
+void add_tss(uint8_t i){
+    uint32_t base = (uint32_t)&tss_entry;
+    uint32_t limit = base + sizeof(tss_entry);
+
+    add_gdt(i, base, limit, 0xE9, 0x00);
+
+    memset(&tss_entry, 0, sizeof(tss_entry));
+
+    tss_entry.cs = 0x0b;
+    tss_entry.ss = tss_entry.ds = tss_entry.es = tss_entry.fs = tss_entry.gs = 0x13;
+
+    tss_entry.ss0 = 0x10;
+    tss_entry.esp0 = 0;
+}
+
+void update_kstack(uint32_t esp){
+    tss_entry.esp0 = esp;
+}
+
 int gdt_init(){
     _gdtd.size = (sizeof(gdt_entry_t) * GDT_NUM_ENTRIES) - 1;
     _gdtd.addr = (uint32_t)&(_gdts[0]);
@@ -48,8 +69,13 @@ int gdt_init(){
     add_gdt(GDT_USR_CODE_SEG, 0, 0xFFFFFFFF, 0xFA, 0xCF);
     add_gdt(GDT_USR_DATA_SEG, 0, 0xFFFFFFFF, 0xF2, 0xCF);   
 
+    add_tss(GDT_TSS_SEG);
+
     extern void gdt_flush(uint32_t ptr);
     gdt_flush((uintptr_t)&_gdtd);
+
+    extern void tss_flush();
+    tss_flush();
 
     log_printf(LOG_OK, "Setup GDT\n");
 

@@ -21,7 +21,7 @@ extern DECLARE_LOCK(vga_op_lock);
 
 #define TIME_SLICE_MAX 5.f
 
-void task_switch(task_t *curr, task_t *next){
+static void task_switch(task_t *curr, task_t *next){
     //Save previous EBP and ESP
     asm volatile("mov eax, ebp; \
                   mov ebx, esp; \
@@ -40,6 +40,7 @@ void task_switch(task_t *curr, task_t *next){
     timer_adjust_clock(clock);
     
     if(next->new == false){
+        update_kstack(next->ksp);
         //Copy over base and stack pointer
         asm volatile("mov eax, %0; \
                       mov ebx, %1; \
@@ -52,6 +53,7 @@ void task_switch(task_t *curr, task_t *next){
         curr->new = false;  //Yay weird hardware!
         //Make sure interrupts are acknowleged, and return from interrupt
         timer_ack();
+        update_kstack(next->ksp);
 
         asm volatile("mov esp, %0;\
                 pop gs; \
@@ -64,17 +66,18 @@ void task_switch(task_t *curr, task_t *next){
     }
 }
 
-void task_stack_add(task_t *task, void *data, size_t size){
+static void task_stack_add(task_t *task, void *data, size_t size){
     task->ksp = (uintptr_t*)((uintptr_t)task->ksp - size);
     memcpy(task->ksp, data, size);
 }
 
-void task_newtask(void (*func)(void)){
+//Forks the current process and jumps to func
+task_t *task_newtask(void (*func)(void), uintptr_t stk){
     task_t *task = kalloc(sizeof(task_t));
     task->tslice = TIME_SLICE_MAX;
     task->priority = 0;
-    task->ksp = (kalloc(0x4000) + 0x4000);  //Kernel stack : 4KiB
-    memset((uintptr_t)task->ksp - 0x4000, 0, 0x4000);
+    task->ksp = stk;
+    task->kstack_top = task->ksp;
     task->new = true;
     task->dir = virtual_allocator->clonedir(virtual_allocator->currentDirectory);
 
@@ -86,16 +89,17 @@ void task_newtask(void (*func)(void)){
     //UESP, SS, FLG, CS, EIP, NUM, ERR, AX, CX, DX, BX, SP, BP, SI, DI
     newstate.esp = newstate.usresp - 28;
     newstate.ebp = 0;
-    newstate.ds = newstate.es = newstate.es = newstate.fs = newstate.gs = newstate.ss = 0x10;
+    newstate.ds = newstate.es = newstate.fs = newstate.gs = newstate.ss = 0x10;
     newstate.cs = 0x8;
     newstate.eflags = 0 | (1 << 9); //INT_ENABLE
 
     task_stack_add(task, &newstate, sizeof(interrupt_state_t));
 
     list_push(task_order, task);
+    return task;
 }
 
-void tasking_tick(void){
+static void tasking_tick(void){
     if(task_order->head == 0) return;
 
     task_switch(current_task->data, current_task->next->data);
@@ -103,18 +107,6 @@ void tasking_tick(void){
 
 extern uintptr_t stack_bottom;
 extern uintptr_t stack_top;
-
-void task_loop_b(void){
-    while(true){
-        vgaterm_putc('A');
-    }
-}
-
-void task_loop_c(void){
-    while(true){
-        vgaterm_putc('B');
-    }
-}
 
 int tasking_init(){
     task_order = new_round_list();
@@ -129,15 +121,7 @@ int tasking_init(){
     list_push(task_order, bstask);
     current_task = task_order->head;
 
-    task_newtask(task_loop_b);
-    task_newtask(task_loop_c);
-
     clock = timer_add_clock(tasking_tick, TIME_SLICE_MAX);
-
-    //Temporary idle task for the test
-    while(true){
-        asm("hlt");
-    }
 
     return 0;
 }
@@ -151,6 +135,7 @@ module_name(tasking);
 module_load(tasking_init);
 module_unload(tasking_fini);
 
+module_depends(gdt);
 module_depends(timer);
 module_depends(irq);
 module_depends(heap);

@@ -17,7 +17,16 @@ typedef struct task {
 
     uintptr_t *ksp;
     uintptr_t kbp;
+
+    uintptr_t kstack_top;
     page_directory_t *dir;
 } task_t;
+
+/*  Forks the currently running task and jumps to func
+ *  func: Function to execute on new task
+ *  stk:  Stack to continue execution on
+ *  r:    Task object created
+ * */
+task_t *task_newtask(void (*func)(void), uintptr_t stk);
 
 #endif

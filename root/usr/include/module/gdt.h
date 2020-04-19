@@ -39,18 +39,45 @@ typedef struct gdt_entry {
     uint8_t base_high;
 } __attribute__((packed)) gdt_entry_t;
 
+typedef struct tss_entry {
+    uint32_t link;
+    uint32_t esp0;
+    uint32_t ss0;
+    uint32_t esp1;
+    uint32_t ss1;
+    uint32_t esp2;
+    uint32_t ss2;
+    uint32_t cr3;
+    uint32_t eip;
+    uint32_t eflags;
+    uint32_t eax, ecx, edx, ebx, esp, ebp, esi, edi;
+    uint32_t es, cs, ss, ds, fs, gs, ldtr;
+    uint16_t resv;
+    uint16_t iopb_off;
+} __attribute__((packed)) tss_entry_t;
+
 typedef struct gdt_descriptor {
     uint16_t size;
     uintptr_t addr;
 } __attribute__((packed)) gdt_descriptor_t;
 
 /*  Creates a new GDT entry based on the information given
+ *  i:      Index to place entry
  *  base:   Address to begin translation
  *  limit:  Number of bytes to target
  *  access: General purpose flags
  *  flags:  More specialized flags
- *  return: New GDT entry
  * */
 void add_gdt(uint8_t i, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags);
+
+/*  Creates a new GDT entry to house the TSS
+ *  i:      Index to place entry
+ * */
+void add_tss(uint8_t i);
+
+/*  Sets the TSS kernel stack
+ *  esp:    Stack pointer
+ * */
+void update_kstack(uint32_t esp);
 
 #endif

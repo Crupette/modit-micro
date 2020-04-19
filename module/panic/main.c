@@ -8,6 +8,7 @@
 #include "kernel/lock.h"
 
 extern DECLARE_LOCK(vga_op_lock);
+bool panicd = 0;
 
 void print_context(interrupt_state_t *r){
     uint32_t om = 0xDEAD;
@@ -59,16 +60,27 @@ void __panic(interrupt_state_t *r, char *fmt, ...){
     char buf[256];
     memset(buf, 0, 256);
 
-    vga_printf("========== KERNEL PANIC ==========\n");
+    if(panicd){
+         vga_printf("\033[33;41m========================== \033[91mSECOND ORDER  KERNEL PANIC \033[33m==========================\033[97;40m\n");   
+    }else{
+        vga_printf("\033[33m================================= \033[91mKERNEL PANIC \033[33m=================================\033[97m\n");
+    }
+ 
     k_vprintf(fmt, ap, buf);
-
     vga_printf("%s\n", buf);
 
-    vga_printf("Context:\n");
-    print_context(r);
+    if(r != 0){
+        vga_printf("Context:\n");
+        print_context(r);
+        
+        if(!panicd){
+            panicd = true;
+            vga_printf("Stack trace:\n");
+            print_stk(r);
+        }
+    }
 
-    vga_printf("Stack trace:\n");
-    print_stk(r);
+    vga_printf("\nSystem halted!\n");
 
     while(true) asm("hlt");
 }
