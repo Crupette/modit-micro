@@ -109,6 +109,7 @@ void timer_interrupt(interrupt_state_t *r){
     uint32_t ms_passed = timer_read() / freq_1ms;
     timer_set(timer_shortest * freq_1ms * ms_1ms);
 
+    timer_ack();
     for(hook_node = clock_hooks->head; hook_node; hook_node = hook_node->next){
         hook_clock = hook_node->data;
         hook_clock->ms_left -= ms_passed / ms_1ms;
@@ -118,7 +119,6 @@ void timer_interrupt(interrupt_state_t *r){
             hook_clock->ms_left += hook_clock->ms;
         }
     }
-    timer_ack();
 }
 
 void one_tick(void){

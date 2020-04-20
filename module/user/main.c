@@ -15,8 +15,6 @@ uint32_t next_pid = 0;
 list_t *utsk_list = 0;
 
 static void _user_second_half(uintptr_t entry, uintptr_t usrstkdata, uintptr_t usrstksize){
-    asm volatile("add ebp, 4");
-
     uintptr_t ustk = virtual_allocator->allocpgs(0xCFFFC000, 0x4000, 0x7);
     ustk += 0x4000;
 
@@ -37,7 +35,9 @@ static void _user_spawn_second_half(
         uintptr_t usrstkdata, 
         uintptr_t usrstksize){
     
-    asm volatile("add ebp, 4");
+    asm volatile("sub ebp, 4");
+    vga_printf("File %p, Usrstk %p, Usrstksz: %p\n",
+            file, usrstkdata, usrstksize);
 
     uintptr_t uentry = modit_elf_load(file);
     uintptr_t ustk = virtual_allocator->allocpgs(0xCFFFC000, 0x4000, 0x7);

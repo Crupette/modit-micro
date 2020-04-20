@@ -16,59 +16,32 @@ list_t *task_order = 0;
 clock_hook_t *clock = 0;
 
 list_node_t *current_task = 0;
+list_node_t *next_task = 0;
 
 extern DECLARE_LOCK(vga_op_lock);
 
 #define TIME_SLICE_MAX 5.f
 
-static void task_switch(task_t *curr, task_t *next){
-    //Save previous EBP and ESP
-    asm volatile("mov eax, ebp; \
-                  mov ebx, esp; \
-                  mov %0, eax; \
-                  mov %1, ebx": 
-                  "=r"(curr->kbp), "=r"(curr->ksp));
-    
-    if(next->dir != virtual_allocator->currentDirectory){
-            curr->dir = virtual_allocator->swpdir(next->dir);
-    }
-
+static void task_switch(){
     current_task = current_task->next;
+    task_t *curr = current_task->data;
 
-    //Change clock to tick towards next task's timeslice
-    clock->ms = clock->ms_left = (next->tslice);
-    timer_adjust_clock(clock);
-    
-    if(next->new == false){
-        update_kstack(next->ksp);
-        //Copy over base and stack pointer
-        asm volatile("mov eax, %0; \
-                      mov ebx, %1; \
-                      mov ebp, ebx; \
-                      mov esp, eax"
-                      :: "r"(next->ksp), "r"(next->kbp));
-        return;
-    }else{
-        next->new = false;
-        curr->new = false;  //Yay weird hardware!
-        //Make sure interrupts are acknowleged, and return from interrupt
-        timer_ack();
-        update_kstack(next->ksp);
+    uintptr_t esp, ebp, eip;
+    eip = curr->ip;
+    esp = curr->ksp;
+    ebp = curr->kbp;
 
-        asm volatile("mov esp, %0;\
-                pop gs; \
-                pop fs; \
-                pop es; \
-                pop ds; \
-                popad; \
-                add esp, 8; \
-                iret" :: "r"(next->ksp));
-    }
-}
+    //vga_printf("tp %p, %p, %p\n", esp, ebp, eip);
 
-static void task_stack_add(task_t *task, void *data, size_t size){
-    task->ksp = (uintptr_t*)((uintptr_t)task->ksp - size);
-    memcpy(task->ksp, data, size);
+    virtual_allocator->swpdir(curr->dir);
+    update_kstack(curr->kstack_top);
+
+    asm volatile("mov ebx, %0; \
+                  mov esp, %1; \
+                  mov ebp, %2; \
+                  mov eax, 0; \
+                  jmp ebx":: "r"(eip), "r"(esp), "r"(ebp)
+                  : "ebx", "esp", "eax");
 }
 
 //Forks the current process and jumps to func
@@ -78,22 +51,9 @@ task_t *task_newtask(void (*func)(void), uintptr_t stk){
     task->priority = 0;
     task->ksp = stk;
     task->kstack_top = task->ksp;
+    task->ip = func;
     task->new = true;
     task->dir = virtual_allocator->clonedir(virtual_allocator->currentDirectory);
-
-    //Save states for new task execution
-    interrupt_state_t newstate = { 0 };
-    newstate.eax = newstate.ebx = newstate.ecx = newstate.edx = newstate.esi = newstate.edi = 0;
-    newstate.eip = (uintptr_t)func;
-    newstate.usresp = (uintptr_t)task->ksp;
-    //UESP, SS, FLG, CS, EIP, NUM, ERR, AX, CX, DX, BX, SP, BP, SI, DI
-    newstate.esp = newstate.usresp - 28;
-    newstate.ebp = 0;
-    newstate.ds = newstate.es = newstate.fs = newstate.gs = newstate.ss = 0x10;
-    newstate.cs = 0x8;
-    newstate.eflags = 0 | (1 << 9); //INT_ENABLE
-
-    task_stack_add(task, &newstate, sizeof(interrupt_state_t));
 
     list_push(task_order, task);
     return task;
@@ -101,8 +61,30 @@ task_t *task_newtask(void (*func)(void), uintptr_t stk){
 
 static void tasking_tick(void){
     if(task_order->head == 0) return;
+    if(current_task->next == current_task) return;
 
-    task_switch(current_task->data, current_task->next->data);
+    uint32_t esp, ebp, eip;
+    asm volatile("mov %0, esp": "=r"(esp));
+    asm volatile("mov %0, ebp": "=r"(ebp));
+    
+    extern uintptr_t read_eip();
+    eip = read_eip();
+
+    if(eip == 0){
+        //vga_printf("Done\n");
+        //Task switch is done
+        return;
+    }
+
+    UNLOCK(vga_op_lock);
+    //vga_printf("Switching from %p, %p, %p ", esp, ebp, eip);
+
+    task_t *curr = current_task->data;
+    curr->ksp = esp;
+    curr->kbp = ebp;
+    curr->ip = eip;
+
+    task_switch();
 }
 
 extern uintptr_t stack_bottom;
@@ -115,7 +97,7 @@ int tasking_init(){
     task_t *bstask = kalloc(sizeof(task_t));
     bstask->tslice = TIME_SLICE_MAX;
     bstask->priority = 0;
-    bstask->ksp = &stack_top;
+    bstask->ksp = stack_top;
     bstask->dir = virtual_allocator->currentDirectory;
 
     list_push(task_order, bstask);

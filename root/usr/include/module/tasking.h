@@ -15,8 +15,9 @@ typedef struct task {
     int8_t priority;
     bool new;
 
-    uintptr_t *ksp;
+    uintptr_t ksp;
     uintptr_t kbp;
+    uintptr_t ip;
 
     uintptr_t kstack_top;
     page_directory_t *dir;
