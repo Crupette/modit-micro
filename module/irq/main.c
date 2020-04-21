@@ -17,6 +17,7 @@ void _irq_handler(interrupt_state_t *state){
     if(_handlers[state->num - 32] != 0){
         _handlers[state->num - 32](state);
     }else{
+        if(state->num - 32 >= 16) return;
         if(state->num - 32 >= 8){
             outb(0xA0, 0x20);
         }

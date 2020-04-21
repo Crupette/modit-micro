@@ -14,7 +14,6 @@ irq_common:
     mov es, ax
     mov fs, ax
     mov gs, ax
-    mov ss, ax
 
     cld
 

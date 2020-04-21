@@ -60,7 +60,7 @@ void _isr_handler(interrupt_state_t *state){
     if(_handlers[state->num] != 0){
         _handlers[state->num](state);
     }else{
-        //_unhandled_exception(state);
+        _unhandled_exception(state);
         asm("hlt");
     }
 }

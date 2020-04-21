@@ -36,6 +36,13 @@ static void task_switch(){
     virtual_allocator->swpdir(curr->dir);
     update_kstack(curr->kstack_top);
 
+    if(curr->iobm == 0){
+        curr->iobm = kalloc(8192);
+        memset(curr->iobm, 0xFF, 8192);
+    }
+
+    update_iobm(curr->iobm);
+
     asm volatile("mov ebx, %0; \
                   mov esp, %1; \
                   mov ebp, %2; \
@@ -62,6 +69,7 @@ task_t *task_newtask(void (*func)(void), uintptr_t stk){
 static void tasking_tick(void){
     if(task_order->head == 0) return;
     if(current_task->next == current_task) return;
+    if(current_task->next == 0) return;
 
     uint32_t esp, ebp, eip;
     asm volatile("mov %0, esp": "=r"(esp));

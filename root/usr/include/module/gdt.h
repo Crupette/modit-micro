@@ -39,7 +39,11 @@ typedef struct gdt_entry {
     uint8_t base_high;
 } __attribute__((packed)) gdt_entry_t;
 
-typedef struct tss_entry {
+struct iobmap {
+    uint8_t bm[8192];
+};
+
+struct tss_entry_base {
     uint32_t link;
     uint32_t esp0;
     uint32_t ss0;
@@ -54,7 +58,13 @@ typedef struct tss_entry {
     uint32_t es, cs, ss, ds, fs, gs, ldtr;
     uint16_t resv;
     uint16_t iopb_off;
-} __attribute__((packed)) tss_entry_t;
+} __attribute__((packed));
+
+typedef struct tss_entry {
+    struct tss_entry_base base;
+    struct iobmap iobmap;
+} tss_entry_t;
+
 
 typedef struct gdt_descriptor {
     uint16_t size;
@@ -74,6 +84,11 @@ void add_gdt(uint8_t i, uint32_t base, uint32_t limit, uint8_t access, uint8_t f
  *  i:      Index to place entry
  * */
 void add_tss(uint8_t i);
+
+/*  Copies the bm passed into the tss iopbm
+ *  bm: Bitmap to copy over
+ * */
+void update_iobm(uint8_t *bm);
 
 /*  Sets the TSS kernel stack
  *  esp:    Stack pointer

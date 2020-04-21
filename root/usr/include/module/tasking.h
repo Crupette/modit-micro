@@ -21,6 +21,9 @@ typedef struct task {
 
     uintptr_t kstack_top;
     page_directory_t *dir;
+    uint8_t *iobm;
+
+    void *parent_struct;
 } task_t;
 
 /*  Forks the currently running task and jumps to func

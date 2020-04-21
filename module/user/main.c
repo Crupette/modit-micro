@@ -36,8 +36,6 @@ static void _user_spawn_second_half(
         uintptr_t usrstksize){
     
     asm volatile("sub ebp, 4");
-    vga_printf("File %p, Usrstk %p, Usrstksz: %p\n",
-            file, usrstkdata, usrstksize);
 
     uintptr_t uentry = modit_elf_load(file);
     uintptr_t ustk = virtual_allocator->allocpgs(0xCFFFC000, 0x4000, 0x7);
@@ -79,6 +77,7 @@ user_task_t *user_spawn(
     utsk->pid = next_pid++;
     utsk->perms = perms;
     utsk->task = task_newtask(_user_spawn_second_half, kstk_top);
+    utsk->task->parent_struct = utsk;
     
     list_push(utsk_list, utsk);
     return utsk;

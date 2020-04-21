@@ -33,5 +33,6 @@ module_name(init);
 module_load(init_init);
 module_unload(init_fini);
 
+module_depends(syscall);
 module_depends(user);
 module_depends(panic);

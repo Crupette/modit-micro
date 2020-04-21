@@ -17,6 +17,8 @@ typedef struct user_task {
     uint32_t pid;
 } user_task_t;
 
+#define USER_PERM_IO 0x1
+
 /*  Spawns a new usermode process, which begins usermode execution at ELF start
  *  entry:     Usermode entry
  *  ustkdata:  User stack data

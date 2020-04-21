@@ -35,26 +35,35 @@ void add_gdt(uint8_t i, uint32_t base, uint32_t limit, uint8_t access, uint8_t f
     entry->limit_high = (limit >> 16) & 0xF;
 
     entry->access = access;
+    entry->flags = (limit >> 16) & 0xF;
     entry->flags |= (flags & 0xF0);
 }
 
 void add_tss(uint8_t i){
     uint32_t base = (uint32_t)&tss_entry;
-    uint32_t limit = base + sizeof(tss_entry);
+    uint32_t limit = base + sizeof(tss_entry_t);
 
     add_gdt(i, base, limit, 0xE9, 0x00);
 
     memset(&tss_entry, 0, sizeof(tss_entry));
 
-    tss_entry.cs = 0x0b;
-    tss_entry.ss = tss_entry.ds = tss_entry.es = tss_entry.fs = tss_entry.gs = 0x13;
+    tss_entry.base.cs = 0x0b;
+    tss_entry.base.ss = tss_entry.base.ds = 
+        tss_entry.base.es = tss_entry.base.fs = 
+        tss_entry.base.gs = 0x13;
 
-    tss_entry.ss0 = 0x10;
-    tss_entry.esp0 = 0;
+    tss_entry.base.ss0 = 0x10;
+    tss_entry.base.esp0 = 0;
+    tss_entry.base.iopb_off = sizeof(struct tss_entry_base);
+    memset(&tss_entry.iobmap, 0xFF, 8192);
+}
+
+void update_iobm(uint8_t *bm){
+    memcpy(&tss_entry.iobmap, bm, 8192);
 }
 
 void update_kstack(uint32_t esp){
-    tss_entry.esp0 = esp;
+    tss_entry.base.esp0 = esp;
 }
 
 int gdt_init(){
