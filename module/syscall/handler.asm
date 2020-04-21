@@ -2,8 +2,6 @@
 [EXTERN syscall_handler]
 
 isr_77_syscall:
-    cli
-
     push gs
     push fs
     push es

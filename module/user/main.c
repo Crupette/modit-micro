@@ -11,8 +11,10 @@
 #include "kernel/lock.h"
 
 uint32_t next_pid = 0;
-
 list_t *utsk_list = 0;
+DECLARE_LOCK(utsk_lock) = 0;
+
+extern list_node_t *current_task;
 
 static void _user_second_half(uintptr_t entry, uintptr_t usrstkdata, uintptr_t usrstksize){
     uintptr_t ustk = virtual_allocator->allocpgs(0xCFFFC000, 0x4000, 0x7);
@@ -73,6 +75,7 @@ user_task_t *user_spawn(
 
     kstk_top -= 12;
 
+    LOCK(utsk_lock);
     user_task_t *utsk = kalloc(sizeof(user_task_t));
     utsk->pid = next_pid++;
     utsk->perms = perms;
@@ -80,8 +83,87 @@ user_task_t *user_spawn(
     utsk->task->parent_struct = utsk;
     
     list_push(utsk_list, utsk);
+    UNLOCK(utsk_lock);
+
     return utsk;
 }
+
+#define STK_PUSH(sp, data, size) \
+    sp -= size; \
+    memcpy((void*)sp, data, size)
+
+user_task_t *user_fork(){
+    task_t *ctsk = current_task->data;
+    user_task_t *putsk = ctsk->parent_struct;
+
+    LOCK(utsk_lock);
+    user_task_t *utsk = kalloc(sizeof(user_task_t));
+    utsk->pid = next_pid++;
+    utsk->perms = putsk->perms;
+
+    tasking_disable();  //We don't want to mangle the new task
+    
+    extern void usr_ret();
+    utsk->task = task_newtask(usr_ret, kalloc(0x2000));
+    utsk->task->parent_struct = utsk;
+    utsk->state.num = 0;
+
+    STK_PUSH(utsk->task->ksp, &putsk->state, sizeof(syscall_state_t));
+    
+
+    tasking_enable();
+
+    list_push(utsk_list, utsk);
+    UNLOCK(utsk_lock);
+
+    return utsk;
+}
+
+void user_exec(initrd_file_t *file, void *ustkdata, uintptr_t ustksize, uint32_t perms){
+    uintptr_t elf_entry = modit_elf_load(file);
+    uintptr_t ustk = 0xD00000000;
+
+    if(ustkdata != 0 && ustksize != 0){
+        ustk -= ustksize;
+        memcpy((void*)ustk, (void*)ustkdata, ustksize);
+    }
+
+    extern void usr_switch(uintptr_t entry, uintptr_t stk);
+    usr_switch(elf_entry, ustk);
+
+    while(true) asm("hlt");
+}
+
+void user_block(uint32_t id){
+    for(list_node_t *node = utsk_list->head; node; node = node->next){
+        user_task_t *utsk = node->data;
+        if(utsk->pid == id){
+            utsk->task->blocked = true;
+            return;
+        }
+    }
+}
+
+void user_awake(uint32_t id){
+    for(list_node_t *node = utsk_list->head; node; node = node->next){
+        user_task_t *utsk = node->data;
+        if(utsk->pid == id){
+            utsk->task->blocked = false;
+            return;
+        }
+    }
+}
+
+bool user_isblocked(uint32_t id){
+     for(list_node_t *node = utsk_list->head; node; node = node->next){
+        user_task_t *utsk = node->data;
+        if(utsk->pid == id){
+            return utsk->task->blocked;
+        }
+    }
+    return false; 
+}
+
 
 int user_init(){
     utsk_list = new_list();

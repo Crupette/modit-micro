@@ -13,10 +13,12 @@
 #include "kernel/lock.h"
 
 list_t *task_order = 0;
-clock_hook_t *clock = 0;
+static clock_hook_t *clock = 0;
 
 list_node_t *current_task = 0;
 list_node_t *next_task = 0;
+
+static bool _enabled = true;
 
 extern DECLARE_LOCK(vga_op_lock);
 
@@ -26,12 +28,14 @@ static void task_switch(){
     current_task = current_task->next;
     task_t *curr = current_task->data;
 
+    if(curr->blocked) task_switch();
+
     uintptr_t esp, ebp, eip;
     eip = curr->ip;
     esp = curr->ksp;
     ebp = curr->kbp;
 
-    //vga_printf("tp %p, %p, %p\n", esp, ebp, eip);
+    //vga_printf("task s%p, b%p, i%p\n", esp, ebp, eip);
 
     virtual_allocator->swpdir(curr->dir);
     update_kstack(curr->kstack_top);
@@ -59,7 +63,7 @@ task_t *task_newtask(void (*func)(void), uintptr_t stk){
     task->ksp = stk;
     task->kstack_top = task->ksp;
     task->ip = func;
-    task->new = true;
+    task->blocked = false;
     task->dir = virtual_allocator->clonedir(virtual_allocator->currentDirectory);
 
     list_push(task_order, task);
@@ -70,6 +74,7 @@ static void tasking_tick(void){
     if(task_order->head == 0) return;
     if(current_task->next == current_task) return;
     if(current_task->next == 0) return;
+    if(_enabled == 0) return;
 
     uint32_t esp, ebp, eip;
     asm volatile("mov %0, esp": "=r"(esp));
@@ -93,6 +98,14 @@ static void tasking_tick(void){
     curr->ip = eip;
 
     task_switch();
+}
+
+void tasking_disable(){
+    _enabled = false;
+}
+
+void tasking_enable(){
+    _enabled = true;
 }
 
 extern uintptr_t stack_bottom;

@@ -9,13 +9,23 @@
 typedef struct syscall_state {
     unsigned int num;
     unsigned int arg1, arg2, arg3, arg4, arg5;
+    unsigned int ebp, ds, es, fs, gs;
+    unsigned int eip, cs, eflags, usresp, ss;
 } syscall_state_t;
 
 enum {
-    SYSCALL_PRINT = 0,
-    SYSCALL_GETPERMS,
-    SYSCALL_REQIO,
+    SYSCALL_PRINT = 0,  //Debug syscall
+
+    SYSCALL_GETPERMS,   //Info Requests
+    SYSCALL_GETPID,
+
+    SYSCALL_REQIO,      //IO
     SYSCALL_BLKIO,
+
+    SYSCALL_SPAWN,      //Proc
+    SYSCALL_FORK,
+    SYSCALL_EXEC,
+    
     SYSCALLS_NUM
 };
 

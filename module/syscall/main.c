@@ -24,6 +24,13 @@ static int syscall_getperms(){
     return utsk->perms;
 }
 
+static int syscall_getpid(){
+    task_t *ctsk = current_task->data;
+    user_task_t *utsk = ctsk->parent_struct;
+
+    return utsk->pid;
+}
+
 static int syscall_reqio(uint16_t base, uint16_t len){
     task_t *ctsk = current_task->data;
     user_task_t *utsk = ctsk->parent_struct; 
@@ -50,17 +57,29 @@ static int syscall_blkio(uint16_t base, uint16_t len){
     return 0;
 }
 
+static int syscall_fork(){
+    return user_fork();
+}
+
 static void *scalls[] = {
     &syscall_print,
     &syscall_getperms,
+    &syscall_getpid,
     &syscall_reqio,
     &syscall_blkio,
+    0,
+    &syscall_fork,
 };
 
 void syscall_handler(syscall_state_t *r){
     extern list_node_t *current_task;
-    vga_printf("\033[37mTask %p syscall %i : %x, %x, %x, %x, %x\033[97m\n",
-            current_task->data, r->num, r->arg1, r->arg2, r->arg3, r->arg4, r->arg5);
+
+    task_t *ctsk = current_task->data;
+    user_task_t *utsk = ctsk->parent_struct;
+    memcpy(&utsk->state, r, sizeof(syscall_state_t));
+
+    vga_printf("\033[37mTask %i syscall %i : %x, %x, %x, %x, %x\033[97m\n",
+            utsk->pid, r->num, r->arg1, r->arg2, r->arg3, r->arg4, r->arg5);
 
     if(r->num >= SYSCALLS_NUM) return;
 

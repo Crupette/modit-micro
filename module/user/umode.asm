@@ -1,4 +1,5 @@
 [GLOBAL usr_switch]
+[GLOBAL usr_ret]
 
 ;Args:
 ;   1: Pointer to run
@@ -30,5 +31,21 @@ usr_switch:
     push 0x1B
     mov eax, [ebp + 4]
     push eax
+
+    iret
+
+usr_ret:
+    pop eax
+    pop ebx
+    pop ecx
+    pop edx
+    pop esi
+    pop edi
+    pop ebp
+
+    pop ds
+    pop es
+    pop ds
+    pop gs
 
     iret

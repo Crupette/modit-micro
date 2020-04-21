@@ -125,11 +125,14 @@ void clonetbl(page_directory_t *parent, page_table_t *tbl, uint16_t index){
 
     uint32_t cloneaddr = (uint32_t)index << 22;
     for(uint32_t i = 0; i < 1024; i++){
-        if(tbl->pages[i].entry == 0) continue;
+        if(tbl->pages[i].entry == 0) {
+            cloneaddr += 0x1000;
+            continue;
+        }
         //Remap allocated memory to physical addr of page clone
         page_t oldmappg = virtual_allocator->remappg(
-                physical_allocator->getpg(), pgbuffer, tbl->pages[i].entry & 0xFFF);
-        cloneaddr += (i << 12);
+                tbl->pages[i].entry & 0xFFFFF000, pgbuffer, tbl->pages[i].entry & 0xFFF);
+
         memcpy((void*)cloneaddr, pgbuffer, 0x1000); 
 
         //Restore page address to original mapping
@@ -137,6 +140,7 @@ void clonetbl(page_directory_t *parent, page_table_t *tbl, uint16_t index){
                 (void*)(oldmappg.entry & 0xFFFFF000), pgbuffer, oldmappg.entry & 0xFFF);
 
         newtbl->pages[i] = oldmappg;
+        cloneaddr += 0x1000;
     }
 
     //Restore table address to original mapping

@@ -26,11 +26,6 @@ typedef struct list {
     size_t elements;
 } list_t;
 
-typedef struct dynarray {
-    void *array;
-    size_t element_size;
-} dynarray_t;
-
 /*  Creates a new doubly linked list
  *  r:  Address to new list object
  * */

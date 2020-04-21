@@ -76,6 +76,6 @@ diff -r -c binutils-2.32/ld/emulparams/elf_i386.sh binutils-2.32-modified/ld/emu
       esac
       ;;
 + 	i[3-7]86-*-modit*)
-+ 	 TEXT_START_ADDR=0x1000
++ 	 TEXT_START_ADDR=0x10000
 + 	 ;;
   esac

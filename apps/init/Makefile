@@ -19,7 +19,7 @@ OUT		:= init
 
 all: $(OBJS) $(LIBS)
 	$(LD) $^ -o $(OUT)
-	cp $(OUT) ../../initrd/$(OUT)
+	mv $(OUT) ../../initrd/$(OUT)
 
 %.o:%.c
 	$(CC) $(CFLAGS) -c $< -o $@ -g

@@ -13,7 +13,7 @@
 typedef struct task {
     size_t tslice;
     int8_t priority;
-    bool new;
+    bool blocked;
 
     uintptr_t ksp;
     uintptr_t kbp;
@@ -32,5 +32,10 @@ typedef struct task {
  *  r:    Task object created
  * */
 task_t *task_newtask(void (*func)(void), uintptr_t stk);
+
+/*  Disables and enables tasking respectively
+ * */
+void tasking_disable();
+void tasking_enable();
 
 #endif
