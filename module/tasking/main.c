@@ -35,7 +35,7 @@ static void task_switch(){
     esp = curr->ksp;
     ebp = curr->kbp;
 
-    //vga_printf("task s%p, b%p, i%p\n", esp, ebp, eip);
+    //vga_printf("to %p, %p, %p\n", esp, ebp, eip);
 
     virtual_allocator->swpdir(curr->dir);
     update_kstack(curr->kstack_top);
@@ -88,8 +88,6 @@ static void tasking_tick(void){
         //Task switch is done
         return;
     }
-
-    UNLOCK(vga_op_lock);
     //vga_printf("Switching from %p, %p, %p ", esp, ebp, eip);
 
     task_t *curr = current_task->data;

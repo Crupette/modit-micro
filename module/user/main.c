@@ -98,19 +98,19 @@ user_task_t *user_fork(){
 
     LOCK(utsk_lock);
     user_task_t *utsk = kalloc(sizeof(user_task_t));
+    memset(utsk, 0, sizeof(user_task_t));
     utsk->pid = next_pid++;
     utsk->perms = putsk->perms;
 
     tasking_disable();  //We don't want to mangle the new task
     
     extern void usr_ret();
-    utsk->task = task_newtask(usr_ret, kalloc(0x2000));
+    utsk->task = task_newtask(usr_ret, kalloc(0x2000) + 0x2000);
     utsk->task->parent_struct = utsk;
     utsk->state.num = 0;
 
     STK_PUSH(utsk->task->ksp, &putsk->state, sizeof(syscall_state_t));
     
-
     tasking_enable();
 
     list_push(utsk_list, utsk);
@@ -182,3 +182,4 @@ module_unload(user_fini);
 module_depends(tasking);
 module_depends(heap);
 module_depends(dthelper);
+module_depends(gdt);

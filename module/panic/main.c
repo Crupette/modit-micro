@@ -62,6 +62,7 @@ void __panic(interrupt_state_t *r, char *fmt, ...){
 
     if(panicd){
          vga_printf("\033[33;41m========================== \033[91mSECOND ORDER  KERNEL PANIC \033[33m==========================\033[97;40m\n");   
+         asm volatile("hlt");
     }else{
         vga_printf("\033[33m================================= \033[91mKERNEL PANIC \033[33m=================================\033[97m\n");
     }
