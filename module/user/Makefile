@@ -10,7 +10,8 @@ LD	:= ../../tools/bin/i686-pc-modit-ld
 CC	:= ../../tools/bin/i686-pc-modit-gcc
 ASM	:= nasm -f elf32
 
-CFLAGS	:= -std=gnu99 -ffreestanding -MMD -MP $(WARN) -I$(SYSROOT)/usr/include -masm=intel -DBITS32
+CFLAGS	:= -std=gnu99 -ffreestanding -MMD -MP $(WARN) -I$(SYSROOT)/usr/include -masm=intel
+ENVFLAGS :=
 
 OUT	:= user.ko
 
@@ -19,7 +20,7 @@ all: $(OBJS)
 	cp $(OUT) ../../initrd/$(OUT) -r
 
 %.o:%.c
-	$(CC) $(CFLAGS) -c $< -o $@ -g
+	$(CC) $(CFLAGS) -c $< -o $@ -g $(ENVFLAGS)
 
 %.o:%.asm
 	$(ASM) $< -o $@

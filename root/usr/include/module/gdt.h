@@ -63,7 +63,7 @@ struct tss_entry_base {
 typedef struct tss_entry {
     struct tss_entry_base base;
     struct iobmap iobmap;
-} tss_entry_t;
+} __attribute__((packed))tss_entry_t;
 
 
 typedef struct gdt_descriptor {

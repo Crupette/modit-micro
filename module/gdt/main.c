@@ -59,7 +59,7 @@ void add_tss(uint8_t i){
 }
 
 void update_iobm(uint8_t *bm){
-    memcpy(&tss_entry.iobmap, bm, 8192);
+    memcpy(&(tss_entry.iobmap.bm), bm, 8192);
 }
 
 void update_kstack(uint32_t esp){

@@ -35,7 +35,7 @@ static void task_switch(){
     esp = curr->ksp;
     ebp = curr->kbp;
 
-    //vga_printf("to %p, %p, %p\n", esp, ebp, eip);
+    //vga_printf("to s%p, b%p, i%p\n", esp, ebp, eip);
 
     virtual_allocator->swpdir(curr->dir);
     update_kstack(curr->kstack_top);
@@ -60,9 +60,10 @@ task_t *task_newtask(void (*func)(void), uintptr_t stk){
     task_t *task = kalloc(sizeof(task_t));
     task->tslice = TIME_SLICE_MAX;
     task->priority = 0;
-    task->ksp = stk;
+    task->ksp = task->kbp = stk;
     task->kstack_top = task->ksp;
     task->ip = func;
+    task->iobm = 0;
     task->blocked = false;
     task->dir = virtual_allocator->clonedir(virtual_allocator->currentDirectory);
 
@@ -88,7 +89,7 @@ static void tasking_tick(void){
         //Task switch is done
         return;
     }
-    //vga_printf("Switching from %p, %p, %p ", esp, ebp, eip);
+    //vga_printf("Switching from s%p, b%p, i%p ", esp, ebp, eip);
 
     task_t *curr = current_task->data;
     curr->ksp = esp;
@@ -118,6 +119,7 @@ int tasking_init(){
     bstask->priority = 0;
     bstask->ksp = stack_top;
     bstask->dir = virtual_allocator->currentDirectory;
+    bstask->iobm = 0;
 
     list_push(task_order, bstask);
     current_task = task_order->head;

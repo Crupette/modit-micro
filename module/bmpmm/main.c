@@ -3,7 +3,6 @@
 #include "kernel/logging.h"
 #include "kernel/io.h"
 
-extern multiboot_info_t *mbinfo;
 extern uintptr_t krnl_next_free_pg;
 
 uint32_t *bitmap = 0;
@@ -112,7 +111,7 @@ void _pmm_init(void){
     bitmap = (uint32_t*)krnl_next_free_pg;
     //Allocates the bitmap  
     
-    uintptr_t map_size = (mbinfo->mem_lower + mbinfo->mem_upper) * 1024;  //Memory size in KiB translated to bytes
+    uintptr_t map_size = (mbinfo.mem_lower + mbinfo.mem_upper) * 1024;  //Memory size in KiB translated to bytes
     mapsize = map_size;
     uintptr_t map_pages = ((map_size / 4096) / 4096) / 8;
 
@@ -123,21 +122,20 @@ void _pmm_init(void){
     krnl_next_free_pg += 4096;
 
     //Map free memory regions on bitmap
-    mmap_ent_t *entry = (mmap_ent_t*)(mbinfo->mmap_addr + VIRT_BASE); 
-    while((uintptr_t)entry < mbinfo->mmap_addr + mbinfo->mmap_length + VIRT_BASE){
-        if(entry->type == 1){
-            uintptr_t entry_map_index = (entry->base_low / 4096) / 8;
-            uintptr_t entry_map_len = (entry->len_low / 4096) / 8;
+    for(int i = 0; i < mbinfo.mmap.count; i++){
+        multiboot_mmap_entry_t *entry = &mbinfo.mmap.entries[i];
+       
+        if(entry->type != 1) continue;
+        uintptr_t entry_map_index = (entry->addr / 4096) / 8;
+        uintptr_t entry_map_len = (entry->len / 4096) / 8;
 
-            if(entry_map_index > (map_size / 4096) / 8) continue;
-            if(entry_map_index + entry_map_len >
-                    (map_size / 4096) / 8){
-                entry_map_len = ((map_size / 4096) / 8) - entry_map_index;
-            }
-            
-            memset((void*)((uintptr_t)bitmap + entry_map_index), 0, entry_map_len);
+        if(entry_map_index > (map_size / 4096) / 8) continue;
+        if(entry_map_index + entry_map_len >
+                (map_size / 4096) / 8){
+            entry_map_len = ((map_size / 4096) / 8) - entry_map_index;
         }
-        entry = (mmap_ent_t*)((uint32_t)entry + entry->size + sizeof(entry->size));
+        
+        memset((void*)((uintptr_t)bitmap + entry_map_index), 0, entry_map_len);
     }
     pages_total = map_size / 4096;
 

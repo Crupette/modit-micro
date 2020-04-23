@@ -37,6 +37,7 @@ static void _user_spawn_second_half(
         uintptr_t usrstkdata, 
         uintptr_t usrstksize){
     
+    vga_printf("User spawn!\n");
     asm volatile("sub ebp, 4");
 
     uintptr_t uentry = modit_elf_load(file);
@@ -76,6 +77,8 @@ user_task_t *user_spawn(
     kstk_top -= 12;
 
     LOCK(utsk_lock);
+    tasking_disable();
+
     user_task_t *utsk = kalloc(sizeof(user_task_t));
     utsk->pid = next_pid++;
     utsk->perms = perms;
@@ -83,6 +86,8 @@ user_task_t *user_spawn(
     utsk->task->parent_struct = utsk;
     
     list_push(utsk_list, utsk);
+
+    tasking_enable();
     UNLOCK(utsk_lock);
 
     return utsk;

@@ -15,7 +15,22 @@ KAR		:= tools/bin/i686-pc-modit-ar
 KLD		:= tools/bin/i686-pc-modit-ld
 
 WARNINGS	:= -Wall -Wextra -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict -Wnull-dereference -Wdouble-promotion -Wshadow
-KCFLAGS		:= -std=gnu99 -ffreestanding -MMD -MP $(WARNINGS) -I$(SYSROOT)/usr/include -g -DBITS32
+KCFLAGS		:= -std=gnu99 -ffreestanding -MMD -MP $(WARNINGS) -I$(SYSROOT)/usr/include -g
+ENVFLAGS	:=
+
+MULTIBOOT	= 1
+ARCH		= x86
+
+ifeq ($(ARCH),x86)
+	ENVFLAGS += -DBITS_32
+	ENVFLAGS += -DARCH_I386
+endif
+
+ifeq ($(MULTIBOOT),2)
+	ENVFLAGS += -DMULTIBOOT_2
+else
+	ENVFLAGS += -DMULTIBOOT_1
+endif
 
 .PHONY: all iso kernel mods $(MODS) libs apps $(APPS) initrd tools clean run
 
@@ -34,7 +49,7 @@ iso: kernel initrd | tools/
 kernel: | tools/
 	ln -s ../tools -t $(KRNLDIR) | true
 	ln -s ../../../kernel/include -T root/usr/include/kernel | true
-	$(MAKE) -C $(KRNLDIR) build
+	$(MAKE) -C $(KRNLDIR) build ARCH=$(ARCH) MULTIBOOT=$(MULTIBOOT)
 	mkdir -p root/boot
 	cp $(KRNLDIR)/kernel.bin root/boot/kernel.bin
 
@@ -44,7 +59,7 @@ initrd: mods libs apps | Makefile tools/
 mods: $(MODS)
 $(MODS) : Makefile tools/
 	mkdir -p initrd
-	$(MAKE) -C $@
+	$(MAKE) -C $@ ENVFLAGS="$(ENVFLAGS)"
 
 libs:
 	$(MAKE) -C lib/ build
@@ -54,7 +69,7 @@ libs:
 apps: $(APPS) libs
 $(APPS) : Makefile tools/ libs
 	mkdir -p initrd
-	$(MAKE) -C $@
+	$(MAKE) -C $@ ENVFLAGS="$(ENVFLAGS)"
 
 tools/:
 tools:

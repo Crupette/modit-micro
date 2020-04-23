@@ -11,6 +11,7 @@ CC	:= ../../tools/bin/i686-pc-modit-gcc
 ASM	:= nasm -f elf32
 
 CFLAGS	:= -std=gnu99 -ffreestanding -MMD -MP $(WARN) -I$(SYSROOT)/usr/include
+ENVFLAGS :=
 
 OUT	:= heap.ko
 
@@ -19,7 +20,7 @@ all: $(OBJS)
 	cp $(OUT) ../../initrd/$(OUT) -r
 
 %.o:%.c
-	$(CC) $(CFLAGS) -c $< -o $@ -g
+	$(CC) $(CFLAGS) -c $< -o $@ -g $(ENVFLAGS)
 
 %.o:%.asm
 	$(ASM) $< -o $@
