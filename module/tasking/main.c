@@ -28,7 +28,7 @@ static void task_switch(){
     current_task = current_task->next;
     task_t *curr = current_task->data;
 
-    if(curr->blocked) task_switch();
+    //if(curr->blocked) task_switch();
 
     uintptr_t esp, ebp, eip;
     eip = curr->ip;
@@ -59,12 +59,9 @@ static void task_switch(){
 task_t *task_newtask(void (*func)(void), uintptr_t stk){
     task_t *task = kalloc(sizeof(task_t));
     task->tslice = TIME_SLICE_MAX;
-    task->priority = 0;
     task->ksp = task->kbp = stk;
     task->kstack_top = task->ksp;
     task->ip = func;
-    task->iobm = 0;
-    task->blocked = false;
     task->dir = virtual_allocator->clonedir(virtual_allocator->currentDirectory);
 
     list_push(task_order, task);
@@ -115,11 +112,10 @@ int tasking_init(){
 
     //Bootstrap task
     task_t *bstask = kalloc(sizeof(task_t));
+    memset(bstask, 0, sizeof(task_t));
     bstask->tslice = TIME_SLICE_MAX;
-    bstask->priority = 0;
     bstask->ksp = stack_top;
     bstask->dir = virtual_allocator->currentDirectory;
-    bstask->iobm = 0;
 
     list_push(task_order, bstask);
     current_task = task_order->head;

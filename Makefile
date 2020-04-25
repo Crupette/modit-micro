@@ -18,7 +18,7 @@ WARNINGS	:= -Wall -Wextra -Wduplicated-cond -Wduplicated-branches -Wlogical-op -
 KCFLAGS		:= -std=gnu99 -ffreestanding -MMD -MP $(WARNINGS) -I$(SYSROOT)/usr/include -g
 ENVFLAGS	:=
 
-MULTIBOOT	= 1
+MULTIBOOT	= 2
 ARCH		= x86
 
 ifeq ($(ARCH),x86)

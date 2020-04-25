@@ -196,6 +196,7 @@ void *kalloc(size_t s){
         if(bin_tail->taken == 1){
             bestbin = append_bin(rsize);
         }else{
+            bestbin = bin_tail;
             bestbin->size = rsize;
             virtual_allocator->allocpgs(bestbin->addr, rsize, 0x3);
         }

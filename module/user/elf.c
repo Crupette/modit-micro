@@ -26,8 +26,7 @@ uintptr_t modit_elf_load(initrd_file_t *file){
         bool wr   = phdr->p_flags & 2;
 
         if(phdr->p_type == PT_LOAD){
-            virtual_allocator->allocpgs(phdr->p_vaddr, phdr->p_memsz, 0x5 | 
-                    (wr ? 0x2 : 0));
+            virtual_allocator->allocpgs(phdr->p_vaddr, phdr->p_memsz, 0x7);
             memcpy((void*)phdr->p_vaddr, (file_raw + phdr->p_offset), phdr->p_memsz);
         }
     }

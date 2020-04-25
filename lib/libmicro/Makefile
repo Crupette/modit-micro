@@ -1,6 +1,7 @@
 SYSROOT		:= ../../root
 
 OBJS		:= $(patsubst %.c, %.o, $(wildcard *.c))
+OBJS		+= $(patsubst %.c, %.o, $(wildcard */*.c))
 OBJS		+= $(patsubst %.asm, %.o, $(wildcard *.asm))
 
 OUT			:= libmicro.a

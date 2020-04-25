@@ -37,7 +37,6 @@ static void _user_spawn_second_half(
         uintptr_t usrstkdata, 
         uintptr_t usrstksize){
     
-    vga_printf("User spawn!\n");
     asm volatile("sub ebp, 4");
 
     uintptr_t uentry = modit_elf_load(file);
@@ -80,6 +79,7 @@ user_task_t *user_spawn(
     tasking_disable();
 
     user_task_t *utsk = kalloc(sizeof(user_task_t));
+    memset(utsk, 0, sizeof(user_task_t));
     utsk->pid = next_pid++;
     utsk->perms = perms;
     utsk->task = task_newtask(_user_spawn_second_half, kstk_top);
@@ -126,7 +126,7 @@ user_task_t *user_fork(){
 
 void user_exec(initrd_file_t *file, void *ustkdata, uintptr_t ustksize, uint32_t perms){
     uintptr_t elf_entry = modit_elf_load(file);
-    uintptr_t ustk = 0xD00000000;
+    uintptr_t ustk = 0xD0000000;
 
     if(ustkdata != 0 && ustksize != 0){
         ustk -= ustksize;
@@ -140,6 +140,7 @@ void user_exec(initrd_file_t *file, void *ustkdata, uintptr_t ustksize, uint32_t
 }
 
 void user_block(uint32_t id){
+    vga_printf("Blocking %i\n", id);
     for(list_node_t *node = utsk_list->head; node; node = node->next){
         user_task_t *utsk = node->data;
         if(utsk->pid == id){
@@ -150,6 +151,7 @@ void user_block(uint32_t id){
 }
 
 void user_awake(uint32_t id){
+    vga_printf("Unblocking %i\n", id);
     for(list_node_t *node = utsk_list->head; node; node = node->next){
         user_task_t *utsk = node->data;
         if(utsk->pid == id){

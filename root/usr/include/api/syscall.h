@@ -25,9 +25,22 @@ enum {
     SYSCALL_SPAWN,      //Proc
     SYSCALL_FORK,
     SYSCALL_EXEC,
+
+    SYSCALL_INITRD_GETFC,   //Initrd
+    SYSCALL_INITRD_GETF,
+    SYSCALL_INITRD_READ,
+
+    SYSCALL_RESVPG,
+    SYSCALL_MAPPG,      //Raw Memory Access
+    SYSCALL_ALLOCPGS,
+    SYSCALL_FREEPGS,
     
     SYSCALLS_NUM
 };
+
+#define USER_PERM_IO 0x1
+#define USER_PERM_IRD 0x2
+#define USER_PERM_MEM 0x4
 
 #define DECL_SYSCALL0(fn) int syscall_##fn();
 #define DECL_SYSCALL1(fn, p1) int syscall_##fn(p1);

@@ -25,4 +25,11 @@ char *strstr(const char *hs, const char *n);
  * */
 char *strcpy(char *dest, const char *src);
 
+/*  Fills the first n bytes of memory at s to constant byte c
+ * */
+void *memset(void *s, int c, size_t n);
+
+/*  Copies n bytes from memory area src to memory area dest. Memory areas must not overlap.
+ * */
+void *memcpy(void *dest, const void *src, size_t n);
 #endif
