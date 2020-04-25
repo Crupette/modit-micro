@@ -28,7 +28,7 @@ static void task_switch(){
     current_task = current_task->next;
     task_t *curr = current_task->data;
 
-    //if(curr->blocked) task_switch();
+    if(curr->blocked) task_switch();
 
     uintptr_t esp, ebp, eip;
     eip = curr->ip;
@@ -58,6 +58,7 @@ static void task_switch(){
 //Forks the current process and jumps to func
 task_t *task_newtask(void (*func)(void), uintptr_t stk){
     task_t *task = kalloc(sizeof(task_t));
+    memset(task, 0, sizeof(task_t));
     task->tslice = TIME_SLICE_MAX;
     task->ksp = task->kbp = stk;
     task->kstack_top = task->ksp;
