@@ -8,8 +8,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "micro/file.h"
+
 int micro_fork(void);
-int micro_exec(char *stk, size_t size);
-int micro_spawn(char *stk, size_t size);
+int micro_exec(struct FILE *file, const char *ustk, size_t usz);
+int micro_spawn(struct FILE *file, const char *ustk, size_t usz);
 
 #endif

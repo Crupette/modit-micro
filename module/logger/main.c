@@ -34,7 +34,7 @@ const char *lvlltbl[LOG_FATAL + 1] = {
     "\033[91;41mFATAL\033[97;40m"
 };
 
-void _log_printf(char *file, uint32_t line, log_level_t lvl, char *fmt, ...){
+void _log_printf(const char *file, uint32_t line, log_level_t lvl, char *fmt, ...){
     char *buf = kalloc(256 + (strlen(fmt) * 2));
     char *obuf = buf;
     va_list ap;

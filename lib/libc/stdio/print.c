@@ -7,6 +7,7 @@ int putchar(const char c){
 
 int fputc(FILE *restrict stream, const char c){
     fwrite(&c, 1, 1, stream);
+    fflush(stream);
     return (int)c;
 }
 

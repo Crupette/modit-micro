@@ -10,6 +10,7 @@ extern void _init();
 extern void _fini();
 
 extern void __heap_setup(bool pg);
+extern void __stdio_init(void);
 
 void pre_main(int (*main)(int, char**), int argc, char **argv, char **env){
     __heap_setup(true);

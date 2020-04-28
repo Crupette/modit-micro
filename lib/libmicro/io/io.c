@@ -1,6 +1,6 @@
 #include "micro/io.h"
 
-DEFN_SYSCALL1(print, SYSCALL_PRINT, char*)
+DEFN_SYSCALL1(print, SYSCALL_PRINT, const char*)
 
 DEFN_SYSCALL2(reqio, SYSCALL_REQIO, unsigned short, unsigned short)
 DEFN_SYSCALL2(blkio, SYSCALL_BLKIO, unsigned short, unsigned short)

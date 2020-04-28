@@ -17,7 +17,6 @@ uint32_t micro_getperms(void){
 
 void micro_init(){
     uint32_t perms = micro_getperms();
-    syscall_print(perms);
     if((perms & USER_PERM_MEM) == 0){
         syscall_print("System does not have enough permissions to start\n");
         return;

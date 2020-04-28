@@ -4,6 +4,7 @@
 #include "module/interrupt.h"
 #include "module/datatype/list.h"
 #include "module/heap.h"
+#include "module/gdt.h"
 
 #include "kernel/modloader.h"
 #include "kernel/memory.h"
@@ -20,7 +21,7 @@ list_node_t *next_task = 0;
 
 static bool _enabled = true;
 
-extern DECLARE_LOCK(vga_op_lock);
+DECLARE_LOCK(task_lock) = 0;
 
 #define TIME_SLICE_MAX 5.f
 
@@ -28,7 +29,9 @@ static void task_switch(){
     current_task = current_task->next;
     task_t *curr = current_task->data;
 
-    if(curr->blocked) task_switch();
+    if(curr->blocked){
+        task_switch();
+    }
 
     uintptr_t esp, ebp, eip;
     eip = curr->ip;
@@ -47,6 +50,8 @@ static void task_switch(){
 
     update_iobm(curr->iobm);
 
+    UNLOCK(task_lock);
+
     asm volatile("mov ebx, %0; \
                   mov esp, %1; \
                   mov ebp, %2; \
@@ -57,15 +62,21 @@ static void task_switch(){
 
 //Forks the current process and jumps to func
 task_t *task_newtask(void (*func)(void), uintptr_t stk){
+    LOCK(task_lock);
+
+    disable_interrupts();
     task_t *task = kalloc(sizeof(task_t));
     memset(task, 0, sizeof(task_t));
     task->tslice = TIME_SLICE_MAX;
     task->ksp = task->kbp = stk;
     task->kstack_top = task->ksp;
-    task->ip = func;
+    task->ip = (uintptr_t)func; 
     task->dir = virtual_allocator->clonedir(virtual_allocator->currentDirectory);
-
     list_push(task_order, task);
+
+    UNLOCK(task_lock);
+    enable_interrupts();
+
     return task;
 }
 
@@ -74,6 +85,8 @@ static void tasking_tick(void){
     if(current_task->next == current_task) return;
     if(current_task->next == 0) return;
     if(_enabled == 0) return;
+
+    LOCK(task_lock);
 
     uint32_t esp, ebp, eip;
     asm volatile("mov %0, esp": "=r"(esp));
@@ -85,6 +98,7 @@ static void tasking_tick(void){
     if(eip == 0){
         //vga_printf("Done\n");
         //Task switch is done
+        UNLOCK(task_lock);
         return;
     }
     //vga_printf("Switching from s%p, b%p, i%p ", esp, ebp, eip);
@@ -122,6 +136,7 @@ int tasking_init(){
     current_task = task_order->head;
 
     clock = timer_add_clock(tasking_tick, TIME_SLICE_MAX);
+    tasking_disable();
 
     return 0;
 }

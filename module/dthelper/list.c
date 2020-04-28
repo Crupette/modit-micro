@@ -150,7 +150,7 @@ void list_delete(list_t *list, size_t i){
     if(list == 0) return;
     if((int)i == -1) return;
     list_node_t *node = 0;
-    for(node = list->head; node, i; node = node->next, i--) { }
+    for(node = list->head; node && i > 0; node = node->next, i--) { }
 
     if(node == 0) return;
     if(node->prev) node->prev->next = node->next;

@@ -36,7 +36,7 @@ typedef struct stkframe {
 } stack_frame_t;
 
 void print_stk(interrupt_state_t *r){
-    stack_frame_t *stk = r->ebp;
+    stack_frame_t *stk = (stack_frame_t*)r->ebp;
     for(uint8_t f = 0; stk && f < 20; f++){
         uint32_t om = 0xDEAD;
         uint32_t os = 0xDEAD;

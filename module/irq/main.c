@@ -24,6 +24,7 @@ void _irq_handler(interrupt_state_t *state){
         outb(0x20, 0x20);
         //apic_ack();
     }
+    //vga_printf("ret s%p, b%p, i%p\n", state->usresp, state->ebp, state->eip);
 }
 
 void disable_interrupts(void){

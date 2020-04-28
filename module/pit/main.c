@@ -16,7 +16,7 @@ uint16_t pit_read_count(void){
 
 void pit_set_count(uint16_t rel){
     outb(PIT_CH0_DATA, rel & 0xFF);
-    rel >> 8;
+    rel = rel >> 8;
     outb(PIT_CH0_DATA, rel & 0xFF);
 }
 

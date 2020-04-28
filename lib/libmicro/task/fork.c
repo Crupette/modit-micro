@@ -3,6 +3,6 @@
 
 DEFN_SYSCALL0(fork, SYSCALL_FORK)
 
-int fork(void){
+int micro_fork(void){
     return syscall_fork();
 }

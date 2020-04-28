@@ -38,7 +38,7 @@ static heap_bin_t *find_free_bin(){
     return bin_next;
 }
 
-static heap_bin_t *add_bin(heap_bin_t *parent, void *addr, size_t size){
+static heap_bin_t *add_bin(heap_bin_t *parent, uintptr_t addr, size_t size){
     if(parent == 0) return 0;
     if(size == 0) return 0;
 
@@ -57,7 +57,7 @@ static heap_bin_t *add_bin(heap_bin_t *parent, void *addr, size_t size){
     newbin->addr = addr;
 
     if(pg){
-        micro_allocpgs(addr, size, 0x7);
+        micro_allocpgs((void*)addr, size, 0x7);
     }else{
         //TODO: SBRK
     }
@@ -86,7 +86,7 @@ static void remove_bin(heap_bin_t *bin){
 }
 
 static heap_bin_t *append_bin(size_t size){
-    void *nextaddr = (void*)((uintptr_t)bin_tail->addr + BIN_SIZE(bin_tail->flags));
+    uintptr_t nextaddr = (uintptr_t)bin_tail->addr + BIN_SIZE(bin_tail->flags);
     return add_bin(bin_tail, nextaddr, size);
 }
 
@@ -97,12 +97,16 @@ static heap_bin_t *merge_bin(heap_bin_t *mergee){
         if(mergee->next != 0)
         if(BIN_TAKEN(mergee->flags) != 1 && BIN_TAKEN(mergee->next->flags) != 1){
             mergee->flags += BIN_SIZE(mergee->next->flags);
+            if(mergee->next == bin_tail) bin_tail = mergee;
+            if(mergee == bin_head) bin_head = mergee->next;
             remove_bin(mergee->next);
             merged = true;
         }
         if(mergee->prev != 0)
         if(BIN_TAKEN(mergee->flags) != 1 && BIN_TAKEN(mergee->prev->flags) != 1){
             mergee->flags += BIN_SIZE(mergee->prev->flags);
+            if(mergee == bin_tail) bin_tail = mergee->prev;
+            if(mergee->prev == bin_head) bin_head = mergee;
             remove_bin(mergee->prev);
             merged = true;
         }
@@ -114,7 +118,7 @@ static void split_bin(heap_bin_t *bin, size_t s){
     if(BIN_SIZE(bin->flags) == s) return;
 
     size_t sdif = BIN_SIZE(bin->flags) - s;
-    void *naddr = (void*)((uintptr_t)bin->addr + s);
+    uintptr_t naddr = (uintptr_t)bin->addr + s;
 
     add_bin(bin, naddr, sdif);
     bin->flags = s;
@@ -123,7 +127,7 @@ static void split_bin(heap_bin_t *bin, size_t s){
 static heap_bin_t *find_best_fit(size_t s){
     heap_bin_t *best = 0;
     for(heap_bin_t *bin = bin_head; bin; bin = bin->next){
-        if(bin->flags & 1) continue;
+        if((bin->flags & 1) != 0) continue;
         if(BIN_SIZE(bin->flags) < s) continue;
         if(best == 0){
             best = bin;
@@ -149,7 +153,7 @@ void *malloc(size_t size){
             best = bin_tail;
             best->flags = size;
             if(pg){
-                micro_allocpgs(best->addr, size, 0x7);
+                micro_allocpgs((void*)best->addr, size, 0x7);
             }else{
                 //TODO: SBRK
             }
@@ -158,14 +162,34 @@ void *malloc(size_t size){
     split_bin(best, size);
 
     best->flags |= 1;
-    return best->addr;
+    return (void*)best->addr;
+}
+
+void *realloc(void *ptr, size_t size){
+    if(size == 0 && ptr != 0){
+        free(ptr);
+        return 0;
+    }
+    size = ((size + 1) / 2) * 2;
+
+    heap_bin_t *bin;
+    for(heap_bin_t *bin = bin_head; bin && bin->addr != (uintptr_t)ptr; bin = bin->next) {}
+    if(bin == 0) return 0;
+
+    if(size <= BIN_SIZE(bin->flags)) return ptr;
+    void *new = malloc(size);
+    memcpy(new, ptr, BIN_SIZE(bin->flags));
+
+    free(ptr);
+
+    return new;
 }
 
 void free(void *mem){
     for(heap_bin_t *bin = bin_head; bin; bin = bin->next){
-        if(bin->addr == mem){
+        if(bin->addr == (uintptr_t)mem){
             bin->flags = BIN_SIZE(bin->flags);
-            merge_bin(bin);
+            bin = merge_bin(bin);
             return;
         }
     }
@@ -180,7 +204,7 @@ void __heap_setup(bool paging){
     if(paging){
         bin_head = bin_tail = bin_next = (heap_bin_t*)(PG_BIN_START);
         micro_allocpgs(bin_head, sizeof(heap_bin_t), 0x7);
-        micro_allocpgs(PG_HEAP_START, 0x1000, 0x7);
+        micro_allocpgs((void*)PG_HEAP_START, 0x1000, 0x7);
 
         memset(bin_head, 0, sizeof(heap_bin_t));
         bin_head->addr = PG_HEAP_START;

@@ -35,7 +35,8 @@ usr_switch:
     iret
 
 usr_ret:
-    pop eax
+
+    add esp, 4
     pop ebx
     pop ecx
     pop edx
@@ -45,7 +46,7 @@ usr_ret:
 
     pop ds
     pop es
-    pop ds
+    pop fs
     pop gs
 
     iret

@@ -22,6 +22,12 @@ extern FILE *stderr;
  * */
 size_t fwrite(const void *restrict ptr, size_t size, size_t nmemb, FILE *restrict stream);
 
+/*  Flushes the streams buffer.
+ *  stream: File to flush. if NULL, flushes all files
+ *  r:      Error code
+ * */
+int fflush(FILE *stream);
+
 int putc(const char c);
 int fputc(FILE *restrict stream, const char c);
 

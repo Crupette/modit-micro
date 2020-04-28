@@ -1,9 +1,10 @@
 #include "module/user.h"
 
-#include "elf.h"
+#include "kernel/elf.h"
 #include "kernel/initrd.h"
 #include "kernel/memory.h"
 #include "kernel/logging.h"
+#include "kernel/io.h"
 
 uintptr_t modit_elf_load(initrd_file_t *file){
     uint8_t *file_raw = file->data_start;
@@ -23,10 +24,9 @@ uintptr_t modit_elf_load(initrd_file_t *file){
     
     for(uint16_t i = 0; i < header->e_phnum; i++){
         elf_phdr_t *phdr = &phdrs[i];
-        bool wr   = phdr->p_flags & 2;
 
         if(phdr->p_type == PT_LOAD){
-            virtual_allocator->allocpgs(phdr->p_vaddr, phdr->p_memsz, 0x7);
+            virtual_allocator->allocpgs((void*)phdr->p_vaddr, phdr->p_memsz, 0x7);
             memcpy((void*)phdr->p_vaddr, (file_raw + phdr->p_offset), phdr->p_memsz);
         }
     }

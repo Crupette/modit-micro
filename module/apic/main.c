@@ -60,7 +60,7 @@ void apic_setup(void){
     //Remap APIC registers to known virtual value
     //TODO: Replace remap with mmio funcs
     apic_registry = kalloc_a(0x1000, 0x1000);
-    virtual_allocator->remappg((void*)0xFEE00000, apic_registry, 0x3);
+    virtual_allocator->remappg((void*)0xFEE00000, (void*)apic_registry, 0x3);
 }
 
 void _spurious_empty(interrupt_state_t *r){

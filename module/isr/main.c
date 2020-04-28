@@ -6,6 +6,8 @@
 
 static isr_handler_t _handlers[32] = { 0 };
 
+extern void __panic(interrupt_state_t *r, char *fmt, ...);
+
 void isr_addHandler(uint8_t i, isr_handler_t handler){
     if(i >= 32) return;
     _handlers[i] = handler;

@@ -8,6 +8,7 @@
 #include "kernel/lock.h"
 
 DECLARE_LOCK(page_lock) = 0;
+extern void __panic(interrupt_state_t *r, char *fmt, ...);
 
 void invlpg(void *addr){
     asm volatile("invlpg (%0)":: "r"(addr) : "memory");
@@ -108,9 +109,11 @@ void freepgs(void *req, uint32_t size){
 }
 
 page_directory_t *swpdir(page_directory_t *dir){
+    LOCK(page_lock);
     page_directory_t *orig = virtual_allocator->currentDirectory;
     virtual_allocator->currentDirectory = dir;
     virtual_allocator->invldir();
+    UNLOCK(page_lock);
     return orig;
 }
 
@@ -129,15 +132,14 @@ void clonetbl(page_directory_t *parent, page_table_t *tbl, uint16_t index){
             cloneaddr += 0x1000;
             continue;
         }
-        //Remap allocated memory to physical addr of page clone
         page_t oldmappg = virtual_allocator->remappg(
-                tbl->pages[i].entry & 0xFFFFF000, pgbuffer, tbl->pages[i].entry & 0xFFF);
+                physical_allocator->getpg(), pgbuffer,
+                tbl->pages[i].entry & 0xFFF);
 
-        memcpy((void*)cloneaddr, pgbuffer, 0x1000); 
+        memcpy((void*)pgbuffer, (void*)cloneaddr, 0x1000);
 
-        //Restore page address to original mapping
-        oldmappg = virtual_allocator->remappg(
-                (void*)(oldmappg.entry & 0xFFFFF000), pgbuffer, oldmappg.entry & 0xFFF);
+        oldmappg = virtual_allocator->remappg((void*)(oldmappg.entry & 0xFFFFF000),
+                pgbuffer, oldmappg.entry & 0xFFF);
 
         newtbl->pages[i] = oldmappg;
         cloneaddr += 0x1000;
@@ -157,13 +159,13 @@ page_directory_t *clonedir(page_directory_t *dir){
     memset(new, 0, sizeof(page_directory_t));
 
     //Map kernel page table entries
-    for(int i = 864; i < 1023; i++){
+    for(unsigned int i = 864; i < 1023; i++){
         new->tables[i] = dir->tables[i];
         new->tablesPhys[i] = dir->tablesPhys[i];
     }
 
     //Copy rest of tables
-    for(int i = 0; i < 864; i++){
+    for(unsigned int i = 0; i < 864; i++){
         if(dir->tables[i] == 0) continue;
         new->tablesPhys[i].entry = (uintptr_t)physical_allocator->getpg() 
             | (dir->tablesPhys[i].entry & 0xFFF);
@@ -171,10 +173,9 @@ page_directory_t *clonedir(page_directory_t *dir){
         clonetbl(new, dir->tables[i], i);
     }
 
-    new->tablesPhys[1023].entry = virtual_allocator->getphys(new) | 0x3;
+    new->tablesPhys[1023].entry = virtual_allocator->getphys((uintptr_t)new) | 0x3;
     new->tables[1023] = (page_table_t*)new;
-    new->phys = virtual_allocator->getphys(new);
-
+    new->phys = virtual_allocator->getphys((uintptr_t)new);
     return new;
 }
 

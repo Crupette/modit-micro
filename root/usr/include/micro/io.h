@@ -3,7 +3,7 @@
 
 #include "api/syscall.h"
 
-DECL_SYSCALL1(print, char*)
+DECL_SYSCALL1(print, const char*)
 
 int reqio(unsigned short base, unsigned short len);
 int blkio(unsigned short base, unsigned short len);

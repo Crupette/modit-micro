@@ -4,6 +4,8 @@
 #include "module/heap.h"
 #include "module/datatype/list.h"
 
+#include "kernel/print.h"
+#include "kernel/string.h"
 #include "kernel/io.h"
 #include "kernel/modloader.h"
 #include "kernel/memory.h"
@@ -67,12 +69,16 @@ static int syscall_spawn(initrd_file_t *file, char *stk, size_t stksz){
 }
 
 static int syscall_fork(){
-    return user_fork() != 0;
+    user_task_t *new = user_fork();
+    if(new == 0) return -1;
+    return new->pid;
 }
 
 static int syscall_exec(initrd_file_t *file, char *stk, size_t stksz){
     task_t *ctsk = current_task->data;
     user_task_t *utsk = ctsk->parent_struct;
+
+    if(file == 0) return -1;
 
     return user_spawn(file, stk, stksz, utsk->perms) != 0;   
 }
@@ -88,22 +94,24 @@ static int syscall_initrd_getfc(void){
     return r;
 }
 
-static int syscall_initrd_getf(initrd_file_t *buf, uint32_t i){
+static int syscall_initrd_getf(initrd_file_t *buf, const char *name){
     task_t *ctsk = current_task->data;
     user_task_t *utsk = ctsk->parent_struct;   
 
     if((utsk->perms & USER_PERM_IRD) == 0) return -1; //TODO: ENOPERM
     size_t fc = 0;
+    size_t fi;
     initrd_file_t *files = initrd_get_files(&fc);
 
-    if(i >= fc) return -2; //TODO: EOOB
+    for(fi = 0; fi < fc; fi++){
+        if(strcmp(files[fi].name, name) == 0) break;
+    }
+
+    if(fi >= fc) return -2; //TODO: ENOTFOUND
     if(buf == 0) return -3; //TODO: EINVAL
-    if(buf->name == 0) return -4; //TODO: EINVAL
+    memcpy(buf, &files[fi], sizeof(initrd_file_t));
 
-    memcpy(buf->name, files[i].name, strlen(files[i].name));
-    buf->size = files[i].size;
-
-    return 0;
+    return fi;
 }
 
 static int syscall_initrd_read(char *buf, uint32_t i, uint32_t base, uint32_t len){
@@ -138,8 +146,8 @@ static int syscall_mappg(void *virt, void *phys, uint32_t flgs){
 
     if((utsk->perms & USER_PERM_MEM) == 0) return -1; //TODO: ENOPERM
 
-    if(virt >= 0xD8000000) return -2; //TODO: EOOB
-    return virtual_allocator->mappg(virt, phys, flgs).entry;
+    if((uintptr_t)virt >= 0xD8000000) return -2; //TODO: EOOB
+    return (int)virtual_allocator->mappg(virt, phys, flgs).entry;
 }
 
 static int syscall_allocpgs(void *virt, size_t cnt, uint32_t flgs){
@@ -148,7 +156,7 @@ static int syscall_allocpgs(void *virt, size_t cnt, uint32_t flgs){
 
     if((utsk->perms & USER_PERM_MEM) == 0) return -1; //TODO: ENOPERM
 
-    return virtual_allocator->allocpgs(virt, cnt, flgs);
+    return (int)virtual_allocator->allocpgs(virt, cnt, flgs);
 }
 
 static int syscall_freepgs(void *virt, size_t cnt){
@@ -157,23 +165,28 @@ static int syscall_freepgs(void *virt, size_t cnt){
 
     if((utsk->perms & USER_PERM_MEM) == 0) return -1; //TODO: ENOPERM
 
-    if(virt >= 0xD8000000) return -2; //TODO: EOOB
+    if((uintptr_t)virt >= 0xD8000000) return -2; //TODO: EOOB
     virtual_allocator->freepgs(virt, cnt);
     return 0;
 }
 
 static void *scalls[] = {
     &syscall_print,
+
     &syscall_getperms,
     &syscall_getpid,
+
     &syscall_reqio,
     &syscall_blkio,
+
     &syscall_spawn,
     &syscall_fork,
     &syscall_exec,
+    
     &syscall_initrd_getfc,
     &syscall_initrd_getf,
     &syscall_initrd_read,
+    
     &syscall_resvpg,
     &syscall_mappg,
     &syscall_allocpgs,
@@ -198,8 +211,8 @@ void syscall_handler(syscall_state_t *r){
         return;
     }
 
-    //vga_printf("\033[37mTask %i syscall %i : %x, %x, %x, %x, %x\033[97m\n",
-    //        utsk->pid, r->num, r->arg1, r->arg2, r->arg3, r->arg4, r->arg5);
+    vga_printf("\033[37mTask %i syscall %i : %x, %x, %x, %x, %x %x\033[97m\n",
+            utsk->pid, r->num, r->arg1, r->arg2, r->arg3, r->arg4, r->arg5, r->eip);
 
     ret = sc(r->arg1, r->arg2, r->arg3, r->arg4, r->arg5);
     r->num = ret;

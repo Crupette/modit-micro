@@ -41,6 +41,7 @@ static bin_header_t *add_bin(bin_header_t *parent, void *addr, size_t size){
     if(size == 0){
         return 0;   //Block is 0 bytes, no allocation needed
     }
+
     bin_header_t *newbin = find_free_bin();
     memset(newbin, 0, sizeof(*newbin));
 
@@ -133,7 +134,7 @@ static bin_header_t *find_best_fit(size_t s){
             best = bin;
             continue;
         }
-        int32_t sdif = bin->size - s;
+        uint32_t sdif = bin->size - s;
         if(best->size - s > sdif){
             best = bin;
         }

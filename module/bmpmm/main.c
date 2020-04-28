@@ -122,7 +122,7 @@ void _pmm_init(void){
     krnl_next_free_pg += 4096;
 
     //Map free memory regions on bitmap
-    for(int i = 0; i < mbinfo.mmap.count; i++){
+    for(uint32_t i = 0; i < mbinfo.mmap.count; i++){
         multiboot_mmap_entry_t *entry = &mbinfo.mmap.entries[i];
        
         if(entry->type != 1) continue;

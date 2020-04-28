@@ -9,7 +9,6 @@ section .text
 [GLOBAL _start]
 _start:
     pop eax
-
     call micro_init
 
     push main
