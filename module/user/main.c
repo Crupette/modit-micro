@@ -106,7 +106,7 @@ user_task_t *user_spawn(
     sp -= size; \
     memcpy((void*)(sp), (void*)(data), size)
 
-user_task_t *user_fork(){
+int user_fork(){
     task_t *ctsk = current_task->data;
     user_task_t *putsk = ctsk->parent_struct;
 
@@ -124,6 +124,7 @@ user_task_t *user_fork(){
     utsk->state.num = 0;
     
     memcpy(&(utsk->state), &(putsk->state), sizeof(syscall_state_t));
+    utsk->state.num = 0;
     STK_PUSH(utsk->task->ksp, &(utsk->state), sizeof(syscall_state_t));
 
     list_push(utsk_list, utsk);
@@ -131,7 +132,7 @@ user_task_t *user_fork(){
     UNLOCK(utsk_lock);
     tasking_enable();
 
-    return utsk;
+    return utsk->pid;
 }
 
 void user_exec(initrd_file_t *file, void *ustkdata, uintptr_t ustksize, uint32_t perms){

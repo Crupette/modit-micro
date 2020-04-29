@@ -1,5 +1,3 @@
-/*  Fork / Exec
- * */
 #include <sys/proc.h>
 #include "micro/task.h"
 #include "api/syscall.h"
@@ -8,15 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 
-pid_t fork(void){
-    int i = micro_fork();
-    return i;
-}
-
-extern char **__stitch_args(va_list ap, const char *path, char *arg, int *argc);
-extern uint8_t *__construct_ustk(const char *argv[], size_t *stksz);
-
-int execl(const char *path, const char *arg, ...){
+pid_t spawnl(const char *path, const char *arg, ...){
     if(path == 0) return -1;
     
     va_list ap;
@@ -27,12 +17,12 @@ int execl(const char *path, const char *arg, ...){
 
     va_end(ap);
 
-    int r = execv(path, argv);
+    int r = spawnv(path, argv);
     free(argv);
     return r;
 }
 
-int execv(const char *path, const char *argv[]){
+pid_t spawnv(const char *path, const char *argv[]){
     FILE *file = micro_open(path, 0); //TODO: FS flags
     if(file == 0) return -1;    //TODO: EINVAL
 
@@ -40,7 +30,8 @@ int execv(const char *path, const char *argv[]){
     uint8_t *ustk = __construct_ustk(argv, &stksz);
 
     //TODO: Files other than initrd
-    int r = micro_exec(file, ustk, stksz);
+    int r = micro_spawn(file, ustk, stksz);
     free(ustk);
     return r;
+ 
 }

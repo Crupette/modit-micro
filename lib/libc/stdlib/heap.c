@@ -153,7 +153,7 @@ void *malloc(size_t size){
             best = bin_tail;
             best->flags = size;
             if(pg){
-                micro_allocpgs((void*)best->addr, size, 0x7);
+                micro_allocpgs((void*)best->addr, size + 1, 0x7);
             }else{
                 //TODO: SBRK
             }

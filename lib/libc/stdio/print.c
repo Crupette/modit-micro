@@ -58,12 +58,16 @@ int vprintf(const char *restrict format, va_list ap){
 
 #define PRINTF_FLAG_SIGNED 1
 
-static int __printi_loop(FILE *restrict stream, int32_t n, uint8_t base){
+static int __printi_loop(FILE *restrict stream, uint32_t n, uint8_t base){
     int c = 0;
     if(n >= base){
         c += __printi_loop(stream, n / base, base);
     }
-    fputc(stream, (n % base) + ((n % base) >= 10 ? ('A'-10) : '0'));
+    if(n % base >= 10){
+         fputc(stream, (n % base) + ('A' - 10));       
+    }else{
+        fputc(stream, (n % base) + '0');
+    }
     return c;
 }
 

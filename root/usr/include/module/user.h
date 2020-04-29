@@ -32,10 +32,9 @@ typedef struct user_task {
 user_task_t *user_spawn(initrd_file_t *file, void *ustkdata, uintptr_t ustksize, uint32_t perms);
 
 /*  Forks the current context
- *  r:  Pointer to the new task
- *  otherwise, NULL
+ *  r: Successful
  * */
-user_task_t *user_fork();
+int user_fork();
 
 /*  Replaces the current context's program with ELF in file
  *  file:     ELF file to load

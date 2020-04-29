@@ -69,9 +69,8 @@ static int syscall_spawn(initrd_file_t *file, char *stk, size_t stksz){
 }
 
 static int syscall_fork(){
-    user_task_t *new = user_fork();
-    if(new == 0) return -1;
-    return new->pid;
+    int i = user_fork();
+    return i;
 }
 
 static int syscall_exec(initrd_file_t *file, char *stk, size_t stksz){
@@ -211,8 +210,8 @@ void syscall_handler(syscall_state_t *r){
         return;
     }
 
-    vga_printf("\033[37mTask %i syscall %i : %x, %x, %x, %x, %x %x\033[97m\n",
-            utsk->pid, r->num, r->arg1, r->arg2, r->arg3, r->arg4, r->arg5, r->eip);
+    //vga_printf("\033[37mTask %i syscall %i : %x, %x, %x, %x, %x %x\033[97m\n",
+    //        utsk->pid, r->num, r->arg1, r->arg2, r->arg3, r->arg4, r->arg5, r->eip);
 
     ret = sc(r->arg1, r->arg2, r->arg3, r->arg4, r->arg5);
     r->num = ret;

@@ -47,6 +47,6 @@ pid_t spawnl(const char *path, const char *arg, ...);
  *  argv:   Argument list for new context
  *  r:      PID of the new spawned task. 0 if unsuccessful
  * */
-pid_t spawnl(const char *path, const char *arg, ...);
+pid_t spawnv(const char *path, const char *argv[]);
 
 #endif

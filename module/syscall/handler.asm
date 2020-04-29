@@ -27,8 +27,9 @@ isr_77_syscall:
    
     push esp
     call syscall_handler
-    add esp, 8
+    add esp, 4
 
+    pop eax
     pop ebx
     pop ecx
     pop edx

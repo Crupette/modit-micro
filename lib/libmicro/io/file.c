@@ -17,9 +17,9 @@ int micro_write(struct FILE *file, const char *buffer, size_t len){
 struct FILE *micro_open(const char *restrict path, uint32_t flags){
     //TODO: Search for file in vfs server. This should be fallback
     int fi = syscall_initrd_getf(&(filebuf.desc), path);
-    //if(fi < 0){
-    //    return 0;
-    //}
+    if(fi < 0){
+        return 0;
+    }
     filebuf.fd = nextfd++;
     filebuf.flg = flags | FILE_FLG_INITRD;
 

@@ -199,7 +199,7 @@ void *kalloc(size_t s){
         }else{
             bestbin = bin_tail;
             bestbin->size = rsize;
-            virtual_allocator->allocpgs(bestbin->addr, rsize, 0x3);
+            virtual_allocator->allocpgs(bestbin->addr, rsize + 1, 0x3);
         }
     }
     split_bin(bestbin, rsize);
@@ -211,7 +211,7 @@ void *kalloc(size_t s){
 
 void kfree(void *p){
     LOCK(heap_lock);
-    for(bin_header_t *bin = bin_head; bin->next; bin = bin->next){
+    for(bin_header_t *bin = bin_head; bin; bin = bin->next){
         if(bin->addr == p){
             bin->taken = 0;
             merge_bin(bin);
