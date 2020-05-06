@@ -6,6 +6,9 @@
 #include <string.h>
 #include <stdio.h>
 
+extern const char **__stitch_args(va_list ap, const char *path, const char *arg, int *argc);
+extern uint8_t *__construct_ustk(const char *argv[], size_t *stksz);
+
 pid_t spawnl(const char *path, const char *arg, ...){
     if(path == 0) return -1;
     

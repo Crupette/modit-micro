@@ -7,7 +7,9 @@
 #define MODULE_USER_H 1
 
 #include "module/tasking.h"
+#include "module/datatype/list.h"
 #include "api/syscall.h"
+#include "api/message.h"
 
 #include "kernel/initrd.h"
 
@@ -20,6 +22,10 @@ typedef struct user_task {
     syscall_state_t state;
 
     uint32_t pid;
+
+    message_buffer_t recvbuf;
+    list_t *sendbuf;
+    bool msg_ack;
 } user_task_t;
 
 /*  Spawns a new usermode task, which begins usermode execution at ELF start
@@ -61,6 +67,12 @@ void user_awake(uint32_t id);
  *  r:  If the task is blocked. Returns false if couldn't find PID
  * */
 bool user_isblocked(uint32_t id);
+
+/*  Finds the user task using pid
+ *  id: PID
+ *  r:  User task (if found)
+ * */
+user_task_t *user_find(uint32_t id);
 
 /*  Loads the given ELF file into context's memory
  *  file:   File to load

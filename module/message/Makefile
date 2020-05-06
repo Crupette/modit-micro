@@ -10,17 +10,17 @@ LD	:= ../../tools/bin/i686-pc-modit-ld
 CC	:= ../../tools/bin/i686-pc-modit-gcc
 ASM	:= nasm -f elf32
 
-CFLAGS	:= -std=gnu99 -ffreestanding -MMD -MP $(WARN) -I$(SYSROOT)/usr/include -masm=intel
+CFLAGS	:= -std=gnu99 -ffreestanding -MMD -MP $(WARN) -I$(SYSROOT)/usr/include
 ENVFLAGS :=
 
-OUT	:= syscall.ko
+OUT	:= message.ko
 
 all: $(OBJS)
 	$(LD) -r $^ -o $(OUT)
 	cp $(OUT) ../../initrd/$(OUT) -r
 
 %.o:%.c
-	$(CC) $(CFLAGS) -c $< -o $@ -g $(ENVFLAGS) -DKERNEL
+	$(CC) $(CFLAGS) -c $< -o $@ -g $(ENVFLAGS)
 
 %.o:%.asm
 	$(ASM) $< -o $@

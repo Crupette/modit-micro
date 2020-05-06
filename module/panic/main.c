@@ -10,6 +10,16 @@
 extern DECLARE_LOCK(vga_op_lock);
 bool panicd = 0;
 
+typedef void (*panic_hook)(interrupt_state_t*);
+
+panic_hook __hooks[32] = { 0 };
+int __hook_next = 0;
+
+void panic_add_hook(panic_hook hook){
+    __hooks[__hook_next] = hook;
+    __hook_next++;
+}
+
 void print_context(interrupt_state_t *r){
     uint32_t om = 0xDEAD;
     uint32_t os = 0xDEAD;
@@ -79,6 +89,12 @@ void __panic(interrupt_state_t *r, char *fmt, ...){
             vga_printf("Stack trace:\n");
             print_stk(r);
         }
+    }
+
+    vga_printf("\nOther Information:\n\n");
+
+    for(int i = 0; i < __hook_next; i++){
+        __hooks[i](r);
     }
 
     vga_printf("\nSystem halted!\n");

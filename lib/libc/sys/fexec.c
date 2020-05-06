@@ -13,7 +13,7 @@ pid_t fork(void){
     return i;
 }
 
-extern char **__stitch_args(va_list ap, const char *path, char *arg, int *argc);
+extern const char **__stitch_args(va_list ap, const char *path, const char *arg, int *argc);
 extern uint8_t *__construct_ustk(const char *argv[], size_t *stksz);
 
 int execl(const char *path, const char *arg, ...){

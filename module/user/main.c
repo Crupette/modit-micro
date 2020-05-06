@@ -8,8 +8,8 @@
 #include "kernel/memory.h"
 #include "kernel/logging.h"
 #include "kernel/string.h"
-#include "kernel/vgaterm.h"
 #include "kernel/lock.h"
+#include "kernel/print.h"
 
 uint32_t next_pid = 0;
 list_t *utsk_list = 0;
@@ -91,6 +91,8 @@ user_task_t *user_spawn(
     memset(utsk, 0, sizeof(user_task_t));
     utsk->pid = next_pid++;
     utsk->perms = perms;
+    utsk->sendbuf = new_list();
+
     utsk->task = task_newtask((void*)_user_spawn_second_half, (uintptr_t)kstk_top);
     utsk->task->parent_struct = utsk;
     
@@ -117,7 +119,8 @@ int user_fork(){
     memset(utsk, 0, sizeof(user_task_t));
     utsk->pid = next_pid++;
     utsk->perms = putsk->perms;
-    
+    utsk->sendbuf = new_list();
+
     extern void usr_ret();
     utsk->task = task_newtask(usr_ret, (uintptr_t)kalloc(0x2000) + 0x2000);
     utsk->task->parent_struct = utsk;
@@ -191,9 +194,31 @@ bool user_isblocked(uint32_t id){
     return false; 
 }
 
+user_task_t *user_find(uint32_t id){
+    for(list_node_t *node = utsk_list->head; node; node = node->next){
+        user_task_t *utsk = node->data;
+        if(utsk->pid == id) return utsk;
+    }
+    return 0;
+}
 
+#include "module/interrupt.h"
+void panic_hook(interrupt_state_t *r){
+    (void)r;
+    task_t *ctsk = current_task->data;
+    user_task_t *utsk = ctsk->parent_struct;
+
+    if(utsk == 0){
+        vga_printf("Current PID: [KERNEL]\n");
+        return;
+    }
+    vga_printf("Current PID: %i\n", utsk->pid);
+}
+
+extern void panic_add_hook(void (*hook)(interrupt_state_t *));
 int user_init(){
     utsk_list = new_list();
+    panic_add_hook(panic_hook);
     return 0;
 }
 
@@ -207,6 +232,7 @@ module_load(user_init);
 module_unload(user_fini);
 
 module_depends(tasking);
+module_depends(panic);
 module_depends(heap);
 module_depends(dthelper);
 module_depends(gdt);

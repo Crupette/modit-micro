@@ -32,9 +32,11 @@ page_t remappg(void* phys, void *virt, uint32_t flags){
         uintptr_t *tbl_phys = physical_allocator->getpg();
 
         dir->tablesPhys[dindex].entry = (uintptr_t)tbl_phys | flags;
+        
         dir->tables[dindex] = (page_table_t*)((dindex * 0x1000) + 0xFFC00000);
         tbl = dir->tables[dindex];
-        invlpg(dir->tables[dindex]);
+        
+        virtual_allocator->invldir();
 
         memset(tbl, 0, sizeof(*tbl));
     }

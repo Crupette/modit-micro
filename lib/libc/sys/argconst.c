@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdarg.h>
+#include <string.h>
 
-char **__stitch_args(va_list ap, const char *path, char *arg, int *argc){
-    char **argv = malloc(16);
+const char **__stitch_args(va_list ap, const char *path, const char *arg, int *argc){
+    const char **argv = malloc(16);
     size_t argi = 1;
     argv[0] = path;
 

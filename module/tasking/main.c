@@ -80,7 +80,7 @@ task_t *task_newtask(void (*func)(void), uintptr_t stk){
     return task;
 }
 
-static void tasking_tick(void){
+void tasking_tick(void){
     if(task_order->head == 0) return;
     if(current_task->next == current_task) return;
     if(current_task->next == 0) return;

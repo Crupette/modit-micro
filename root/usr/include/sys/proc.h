@@ -11,7 +11,30 @@
 
 #define PROCESS_NAME_MAXLEN 64
 
-typedef size_t pid_t;
+typedef uint32_t pid_t;
+
+typedef struct proc_reg {
+    uint8_t chksum[4];  //PREG
+    char name[128];
+    pid_t parent;
+} proc_reg_t;
+
+#define PROC_REG_CHKSUM(r) \
+    (char*)r[0] == 'P' && \
+    (char*)r[1] == 'R' && \
+    (char*)r[2] == 'E' && \
+    (char*)r[3] == 'G'
+
+typedef struct prog_req {
+    uint8_t chksum[4];
+    char name[128];
+} proc_req_t;
+
+#define PROC_REQ_CHKSUM(r) \
+    (char*)r[0] == 'P' && \
+    (char*)r[1] == 'R' && \
+    (char*)r[2] == 'E' && \
+    (char*)r[3] == 'Q'
 
 //TODO: Environment variables
 

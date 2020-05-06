@@ -37,4 +37,5 @@ module_unload(init_fini);
 
 module_depends(syscall);
 module_depends(user);
+module_depends(message);
 module_depends(panic);

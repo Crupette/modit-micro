@@ -117,7 +117,10 @@ void timer_interrupt(interrupt_state_t *r){
         if(hook_clock->ms_left <= 0){
             hook_clock->hook();
             hook_clock->ms_left += hook_clock->ms;
+
         }
+
+        if(hook_node == 0) break;
     }
 }
 
