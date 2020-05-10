@@ -9,6 +9,8 @@
 extern const char **__stitch_args(va_list ap, const char *path, const char *arg, int *argc);
 extern uint8_t *__construct_ustk(const char *argv[], size_t *stksz);
 
+extern void __send_preg(const char *path, pid_t target);
+
 pid_t spawnl(const char *path, const char *arg, ...){
     if(path == 0) return -1;
     
@@ -34,6 +36,14 @@ pid_t spawnv(const char *path, const char *argv[]){
 
     //TODO: Files other than initrd
     int r = micro_spawn(file, ustk, stksz);
+
+    if(r < 0){
+        //TODO: Set errno
+        return r;
+    }
+    //Register new process with process server
+    __send_preg(path, r);
+
     free(ustk);
     return r;
  

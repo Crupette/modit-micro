@@ -16,6 +16,8 @@ pid_t fork(void){
 extern const char **__stitch_args(va_list ap, const char *path, const char *arg, int *argc);
 extern uint8_t *__construct_ustk(const char *argv[], size_t *stksz);
 
+extern void __send_preg(const char *path, pid_t target);
+
 int execl(const char *path, const char *arg, ...){
     if(path == 0) return -1;
     

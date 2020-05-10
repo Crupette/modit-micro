@@ -11,12 +11,12 @@
 
 #define PROCESS_NAME_MAXLEN 64
 
-typedef uint32_t pid_t;
+typedef int32_t pid_t;
 
 typedef struct proc_reg {
     uint8_t chksum[4];  //PREG
     char name[128];
-    pid_t parent;
+    pid_t target;
 } proc_reg_t;
 
 #define PROC_REG_CHKSUM(r) \
@@ -29,6 +29,11 @@ typedef struct prog_req {
     uint8_t chksum[4];
     char name[128];
 } proc_req_t;
+
+typedef struct prog_req_ans {
+    uint8_t chksum[4];
+    pid_t pid;
+} proc_req_ans_t;
 
 #define PROC_REQ_CHKSUM(r) \
     (char*)r[0] == 'P' && \
@@ -71,5 +76,12 @@ pid_t spawnl(const char *path, const char *arg, ...);
  *  r:      PID of the new spawned task. 0 if unsuccessful
  * */
 pid_t spawnv(const char *path, const char *argv[]);
+
+/*  Returns the process ID of the process with given name
+ *  Expects the message buffer to be empty. Will wait until satisfied
+ *  name:   Name of process to query
+ *  r:      PID of process (-1 if not found)
+ * */
+pid_t find_process(const char *name);
 
 #endif

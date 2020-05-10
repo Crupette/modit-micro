@@ -20,9 +20,10 @@ message_t *message_pop(message_buffer_t *buf){
     if(buf->count == 0) return 0;
 
     message_t *r = buf->buffer[buf->head];
-    buf->head--;
+    buf->head++;
 
     if(buf->head < 0) buf->head = MSG_MAXCOUNT - 1;
+
     buf->count--;
 
     return r;

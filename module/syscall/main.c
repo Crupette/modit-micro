@@ -184,7 +184,9 @@ static int syscall_spawn(initrd_file_t *file, char *stk, size_t stksz){
     task_t *ctsk = current_task->data;
     user_task_t *utsk = ctsk->parent_struct;
 
-    return user_spawn(file, stk, stksz, utsk->perms) != 0;
+    user_task_t *ntsk = user_spawn(file, stk, stksz, utsk->perms);
+    if(ntsk != 0) return ntsk->pid;
+    return -1;
 }
 
 static int syscall_fork(){
