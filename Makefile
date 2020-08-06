@@ -8,28 +8,43 @@ ISODIR		:= iso
 MODS		:= $(wildcard $(MODDIR)/*/.)
 APPS		:= $(wildcard $(APPDIR)/*/.)
 
+TARGET	:= i686
+MULTIBOOT	= 2
+ARCH		= x86
+TEST		= 0
+
+ifeq ($(ARCH),x64)
+	TARGET	= x86_64
+endif
+
 NASM		:= nasm -f elf32
-KCC		:= tools/bin/i686-pc-modit-gcc
-KAS		:= tools/bin/i686-pc-modit-as
-KAR		:= tools/bin/i686-pc-modit-ar
-KLD		:= tools/bin/i686-pc-modit-ld
+KCC		:= tools/bin/$(TARGET)-pc-modit-gcc
+KAS		:= tools/bin/$(TARGET)-pc-modit-as
+KAR		:= tools/bin/$(TARGET)-pc-modit-ar
+KLD		:= tools/bin/$(TARGET)-pc-modit-ld
 
 WARNINGS	:= -Wall -Wextra -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict -Wnull-dereference -Wdouble-promotion -Wshadow
 KCFLAGS		:= -std=gnu99 -ffreestanding -MMD -MP $(WARNINGS) -I$(SYSROOT)/usr/include -g
 ENVFLAGS	:=
 
-MULTIBOOT	= 2
-ARCH		= x86
-
 ifeq ($(ARCH),x86)
 	ENVFLAGS += -DBITS_32
 	ENVFLAGS += -DARCH_I386
+endif
+ifeq ($(ARCH),x64)
+	ENVFLAGS += -DBITS_64
+	ENVFLAGS += -DARCH_X86_64
+	TARGET	= x86_64
 endif
 
 ifeq ($(MULTIBOOT),2)
 	ENVFLAGS += -DMULTIBOOT_2
 else
 	ENVFLAGS += -DMULTIBOOT_1
+endif
+
+ifeq ($(TEST),1)
+	ENVFLAGS += -DTEST
 endif
 
 .PHONY: all iso kernel mods $(MODS) libs apps $(APPS) initrd tools clean run
@@ -49,7 +64,7 @@ iso: kernel initrd | tools/
 kernel: | tools/
 	ln -s ../tools -t $(KRNLDIR) | true
 	ln -s ../../../kernel/include -T root/usr/include/kernel | true
-	$(MAKE) -C $(KRNLDIR) build ARCH=$(ARCH) MULTIBOOT=$(MULTIBOOT)
+	$(MAKE) -C $(KRNLDIR) build ARCH=$(ARCH) MULTIBOOT=$(MULTIBOOT) TEST=$(TEST)
 	mkdir -p root/boot
 	cp $(KRNLDIR)/kernel.bin root/boot/kernel.bin
 
@@ -73,7 +88,7 @@ $(APPS) : Makefile tools/ libs
 
 tools/:
 tools:
-	util/buildtools.sh
+	TARGET=$(TARGET)-pc-modit util/buildtools.sh
 
 run:
 	qemu-system-i386 -cdrom run/moditos.iso -s -serial stdio -m 64M -smp cores=2

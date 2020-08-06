@@ -1,9 +1,9 @@
-diff -r -c binutils-2.32/bfd/config.bfd binutils-2.32-modified/bfd/config.bfd
-*** binutils-2.32/bfd/config.bfd	2019-01-19 11:01:32.000000000 -0500
---- binutils-2.32-modified/bfd/config.bfd	2019-03-13 17:11:10.084959806 -0400
+diff -r -c binutils-2.35/bfd/config.bfd binutils-2.35-modified/bfd/config.bfd
+*** binutils-2.35/bfd/config.bfd	2020-07-24 05:12:19.000000000 -0400
+--- binutils-2.35-modified/bfd/config.bfd	2020-08-05 23:42:39.777961635 -0400
 ***************
-*** 652,657 ****
---- 652,661 ----
+*** 637,642 ****
+--- 637,646 ----
       targ_selvecs=
       targ64_selvecs=x86_64_elf64_vec
       ;;
@@ -14,68 +14,106 @@ diff -r -c binutils-2.32/bfd/config.bfd binutils-2.32-modified/bfd/config.bfd
   #ifdef BFD64
     x86_64-*-cloudabi*)
       targ_defvec=x86_64_elf64_cloudabi_vec
-diff -r -c binutils-2.32/config.sub binutils-2.32-modified/config.sub
-*** binutils-2.32/config.sub	2019-01-19 11:01:33.000000000 -0500
---- binutils-2.32-modified/config.sub	2019-03-13 17:11:09.388939926 -0400
 ***************
-*** 1342,1347 ****
---- 1342,1348 ----
+*** 696,701 ****
+--- 700,710 ----
+      targ_defvec=x86_64_elf64_vec
+      targ_selvecs=i386_elf32_vec
+      want64=true
++     ;;
++   x86_64-*-modit*)
++     targ_defvec=x86_64_elf64_vec
++     targ_selvecs=i386_elf32_vec
++     want64=true
+      ;;
+  #endif
+    i[3-7]86-*-lynxos*)
+diff -r -c binutils-2.35/config.sub binutils-2.35-modified/config.sub
+*** binutils-2.35/config.sub	2020-07-24 05:12:19.000000000 -0400
+--- binutils-2.35-modified/config.sub	2020-08-05 23:40:06.492574459 -0400
+***************
+*** 1344,1349 ****
+--- 1344,1350 ----
   	     | sym* | kopensolaris* | plan9* \
   	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
-  	     | aos* | aros* | cloudabi* | sortix* \
-+ 	     | modit* \
+  	     | aos* | aros* | cloudabi* | sortix* | twizzler* \
++          | modit* \
   	     | nindy* | vxsim* | vxworks* | ebmon* | hms* | mvs* \
   	     | clix* | riscos* | uniplus* | iris* | isc* | rtu* | xenix* \
   	     | knetbsd* | mirbsd* | netbsd* \
-diff -r -c binutils-2.32/gas/configure.tgt binutils-2.32-modified/gas/configure.tgt
-*** binutils-2.32/gas/configure.tgt	2019-01-19 11:01:33.000000000 -0500
---- binutils-2.32-modified/gas/configure.tgt	2019-03-13 17:11:08.736921303 -0400
+diff -r -c binutils-2.35/gas/configure.tgt binutils-2.35-modified/gas/configure.tgt
+*** binutils-2.35/gas/configure.tgt	2020-07-24 05:12:19.000000000 -0400
+--- binutils-2.35-modified/gas/configure.tgt	2020-08-05 23:43:41.370518581 -0400
 ***************
-*** 260,265 ****
---- 260,266 ----
-    i386-*-chaos)				fmt=elf ;;
+*** 251,256 ****
+--- 251,257 ----
+        x86_64*)				fmt=coff em=pep ;;
+        i*)				fmt=coff em=pe ;;
+      esac ;;
++   i386-*-modit*)        fmt=elf ;;
+    i386-*-nto-qnx*)			fmt=elf ;;
+    i386-*-*nt*)				fmt=coff em=pe ;;
     i386-*-rdos*)				fmt=elf ;;
-    i386-*-darwin*)			fmt=macho ;;
-+   i386-*-modit*)			fmt=elf ;;
-  
-    ia16-*-elf*)				fmt=elf ;;
-  
-diff -r -c binutils-2.32/ld/configure.tgt binutils-2.32-modified/ld/configure.tgt
-*** binutils-2.32/ld/configure.tgt	2019-01-19 11:01:33.000000000 -0500
---- binutils-2.32-modified/ld/configure.tgt	2019-03-13 17:11:08.132904047 -0400
+diff -r -c binutils-2.35/ld/configure.tgt binutils-2.35-modified/ld/configure.tgt
+*** binutils-2.35/ld/configure.tgt	2020-07-24 05:12:20.000000000 -0400
+--- binutils-2.35-modified/ld/configure.tgt	2020-08-05 23:59:52.739642089 -0400
 ***************
-*** 363,368 ****
---- 363,369 ----
-  i[3-7]86-*-vxworks*)	targ_emul=elf_i386_vxworks ;;
-  i[3-7]86-*-chaos)	targ_emul=elf_i386_chaos
+*** 351,356 ****
+--- 351,364 ----
+  i[3-7]86-*-netbsdpe*)	targ_emul=i386pe
+  			targ_extra_ofiles="deffilep.o pe-dll.o"
   			;;
-+ i[3-7]86-*-modit*)	targ_emul=elf_i386 ;;
-  i[3-7]86-*-nacl*)	targ_emul=elf_i386_nacl
-  			targ_extra_emuls="armelf_nacl armelfb_nacl"
-  			targ_extra_libpath=$targ_extra_emuls
++ i[3-7]86-*-modit*)
++             targ_emul=elf_i386
++             targ64_extra_emuls="elf_x86_64"
++             ;;
++ x86_64-*-modit*)
++             targ_emul=elf_x86_64
++             targ_extra_emuls="elf_i386"
++             ;;
+  i[3-7]86-*-elfiamcu)	targ_emul=elf_iamcu
+  			targ_extra_emuls=elf_i386
+  			;;
 ***************
-*** 806,811 ****
---- 806,815 ----
-    NATIVE_LIB_DIRS='/usr/local/lib $$INTERIX_ROOT/usr/lib /lib /usr/lib'
+*** 1071,1076 ****
+--- 1079,1092 ----
+    NATIVE_LIB_DIRS='/usr/local/lib /usr/ccs/lib /lib /usr/lib'
     ;;
-
-+ i[3-7]86-*-modit)
+  
++ i[3-7]86-*-modit*)
 +   NATIVE_LIB_DIRS='/lib /usr/lib'
 +   ;;
 + 
-  ia64-*-aix*)
-    NATIVE_LIB_DIRS='/usr/local/lib /usr/lib/ia64l64 /lib /usr/lib'
-    ;;
-diff -r -c binutils-2.32/ld/emulparams/elf_i386.sh binutils-2.32-modified/ld/emulparams/elf_i386.sh
-*** binutils-2.32/ld/emulparams/elf_i386.sh	2019-01-19 11:01:33.000000000 -0500
---- binutils-2.32-modified/ld/emulparams/elf_i386.sh	2019-03-13 17:11:07.228878220 -0400
++ x86_64-*-modit*)
++   NATIVE_LIB_DIRS='/lib /usr/lib'
++   ;;
++ 
+  esac
+  
+  case "${target}" in
+diff -r -c binutils-2.35/ld/emulparams/elf_i386.sh binutils-2.35-modified/ld/emulparams/elf_i386.sh
+*** binutils-2.35/ld/emulparams/elf_i386.sh	2020-07-24 05:12:20.000000000 -0400
+--- binutils-2.35-modified/ld/emulparams/elf_i386.sh	2020-08-06 00:02:10.640914461 -0400
 ***************
-*** 34,37 ****
---- 34,40 ----
+*** 36,39 ****
+--- 36,42 ----
   	;;
       esac
       ;;
-+ 	i[3-7]86-*-modit*)
-+ 	 TEXT_START_ADDR=0x100000
-+ 	 ;;
++ i[3-7]86-*-modit*)
++     TEXT_START_ADDR=0x400000
++     ;;
+  esac
+diff -r -c binutils-2.35/ld/emulparams/elf_x86_64.sh binutils-2.35-modified/ld/emulparams/elf_x86_64.sh
+*** binutils-2.35/ld/emulparams/elf_x86_64.sh	2020-07-24 05:12:20.000000000 -0400
+--- binutils-2.35-modified/ld/emulparams/elf_x86_64.sh	2020-08-06 00:02:09.252901677 -0400
+***************
+*** 60,63 ****
+--- 60,66 ----
+      LIBPATH_SUFFIX=/amd64
+      ELF_INTERPRETER_NAME=\"/lib/amd64/ld.so.1\"
+    ;;
++ x86_64-*-modit*)
++     TEXT_START_ADDR=0x400000
++   ;;
   esac
