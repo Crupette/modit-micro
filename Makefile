@@ -5,23 +5,13 @@ SYSROOT		:= root
 RUNDIR		:= run
 ISODIR		:= iso
 
-MODS		:= $(wildcard $(MODDIR)/*/.)
+MODS		:= $(wildcard $(MODDIR)/common/*/.)
 APPS		:= $(wildcard $(APPDIR)/*/.)
 
 TARGET	:= i686
 MULTIBOOT	= 2
-ARCH		= x86
+ARCH		= x64
 TEST		= 0
-
-ifeq ($(ARCH),x64)
-	TARGET	= x86_64
-endif
-
-NASM		:= nasm -f elf32
-KCC		:= tools/bin/$(TARGET)-pc-modit-gcc
-KAS		:= tools/bin/$(TARGET)-pc-modit-as
-KAR		:= tools/bin/$(TARGET)-pc-modit-ar
-KLD		:= tools/bin/$(TARGET)-pc-modit-ld
 
 WARNINGS	:= -Wall -Wextra -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict -Wnull-dereference -Wdouble-promotion -Wshadow
 KCFLAGS		:= -std=gnu99 -ffreestanding -MMD -MP $(WARNINGS) -I$(SYSROOT)/usr/include -g
@@ -34,6 +24,7 @@ endif
 ifeq ($(ARCH),x64)
 	ENVFLAGS += -DBITS_64
 	ENVFLAGS += -DARCH_X86_64
+	MODS	+= $(wildcard $(MODDIR)/arch/x86_64/*/.)
 	TARGET	= x86_64
 endif
 
@@ -46,6 +37,11 @@ endif
 ifeq ($(TEST),1)
 	ENVFLAGS += -DTEST
 endif
+
+KCC		:= tools/bin/$(TARGET)-pc-modit-gcc
+KAS		:= tools/bin/$(TARGET)-pc-modit-as
+KAR		:= tools/bin/$(TARGET)-pc-modit-ar
+KLD		:= tools/bin/$(TARGET)-pc-modit-ld
 
 .PHONY: all iso kernel mods $(MODS) libs apps $(APPS) initrd tools clean run
 
@@ -64,37 +60,37 @@ iso: kernel initrd | tools/
 kernel: | tools/
 	ln -s ../tools -t $(KRNLDIR) | true
 	ln -s ../../../kernel/include -T root/usr/include/kernel | true
-	$(MAKE) -C $(KRNLDIR) build ARCH=$(ARCH) MULTIBOOT=$(MULTIBOOT) TEST=$(TEST)
+	$(MAKE) -C $(KRNLDIR) build ARCH=$(ARCH) MULTIBOOT=$(MULTIBOOT) TEST=$(TEST) TARGET=$(TARGET)
 	mkdir -p root/boot
 	cp $(KRNLDIR)/kernel.bin root/boot/kernel.bin
 
-initrd: mods libs apps | Makefile tools/
+initrd: mods | Makefile tools/
 	cd initrd ; tar -cvf ../root/boot/initrd.tar *
 
 mods: $(MODS)
 $(MODS) : Makefile tools/
 	mkdir -p initrd
-	$(MAKE) -C $@ ENVFLAGS="$(ENVFLAGS)"
+	$(MAKE) -C $@ ARCH=$(ARCH) MULTIBOOT=$(MULTIBOOT) TEST=$(TEST) TARGET=$(TARGET)
 
-libs:
-	$(MAKE) -C lib/ build
-	$(MAKE) -C lib/libc build
-	$(MAKE) -C lib/libmicro build
+#libs:
+#	$(MAKE) -C lib/ build
+#	$(MAKE) -C lib/libc build
+#	$(MAKE) -C lib/libmicro build
 
-apps: $(APPS) libs
-$(APPS) : Makefile tools/ libs
-	mkdir -p initrd
-	$(MAKE) -C $@ ENVFLAGS="$(ENVFLAGS)"
+#apps: $(APPS) libs
+#$(APPS) : Makefile tools/ libs
+#	mkdir -p initrd
+#	$(MAKE) -C $@ ENVFLAGS="$(ENVFLAGS)" TARGET=$(TARGET)
 
 tools/:
 tools:
 	TARGET=$(TARGET)-pc-modit util/buildtools.sh
 
 run:
-	qemu-system-i386 -cdrom run/moditos.iso -s -serial stdio -m 64M -smp cores=2
+	qemu-system-x86_64 -cdrom run/moditos.iso -s -serial stdio -m 64M -smp cores=2 -monitor tcp:127.0.0.1:55555,server,nowait;
 
 clean:
-	$(MAKE) -C $(KRNLDIR) clean
+	$(MAKE) -C $(KRNLDIR) clean ARCH=$(ARCH) MULTIBOOT=$(MULTIBOOT) TEST=$(TEST) TARGET=$(TARGET)
 	rm $(RUNDIR)/modetos.iso | true
 	rm initrd/* | true
 	rm module/*/*.o | true
