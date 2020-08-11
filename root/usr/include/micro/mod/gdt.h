@@ -96,17 +96,11 @@ typedef struct tss_entry {
     struct iobmap iobmap;
 }__attribute__((pakced)) tss_entry_t;
 
-typedef struct gdt_desc {
+typedef struct gdt_ptr {
     uint16_t size;
     uintptr_t addr;
-} __attribute__((packed)) gdt_desc_t;
-
-void add_gdt(uint8_t i, uint32_t base, uint32_t limit, uint8_t access, uint8_t flg);
-
-void add_tss(uint8_t i);
+}__attribute__((packed)) gdt_ptr_t;
 
 void update_iobm(uint8_t *bm);
-
-void update_kstk(uintptr_t sp);
 
 #endif
