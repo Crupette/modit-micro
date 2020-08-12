@@ -87,14 +87,12 @@ tools:
 	TARGET=$(TARGET)-pc-modit util/buildtools.sh
 
 run:
-	qemu-system-x86_64 -cdrom run/moditos.iso -s -S -serial stdio --no-reboot --no-shutdown -m 64M -smp cores=2 -monitor tcp:127.0.0.1:55555,server,nowait;
+	qemu-system-x86_64 -cdrom run/moditos.iso -s -serial stdio --no-reboot --no-shutdown -m 64M -smp cores=2 -monitor tcp:127.0.0.1:55555,server,nowait;
 
 clean:
-	$(MAKE) -C $(KRNLDIR) clean ARCH=$(ARCH) MULTIBOOT=$(MULTIBOOT) TEST=$(TEST) TARGET=$(TARGET)
+	$(MAKE) -C $(KRNLDIR) clean ARCH=$(ARCH) MULTIBOOT=$(MULTIBOOT) TEST=$(TEST) TARGET=$(TARGET) | true
 	rm $(RUNDIR)/modetos.iso | true
 	rm initrd/* | true
-	rm module/*/*.o | true
-	rm module/*/*.ko | true
 	$(MAKE) -C lib/ clean
 	$(MAKE) -C lib/libc clean
 	$(MAKE) -C lib/libmicro clean
