@@ -2,12 +2,23 @@
 #include "kernel/modloader.h"
 #include "kernel/print.h"
 #include "kernel/io.h"
+#include "kernel/string.h"
 
 static idt_t idt;
 
 void _int_handler(const interrupt_state_t *state){
-    k_printf("Exception!\n");
-    while(true) asm("hlt");
+    if(state->num >= 32){
+        k_printf("[%i] Tick\n", state->num);
+
+        if(state->num - 32 >= 8) outb(0xA0, 0x20);
+        outb(0x20, 0x20);
+    }else{
+        k_printf("Exception %i (%i) [%p]\n", state->num, state->err, state);
+        k_printf("RAX:  %x RBX: %x RCX: %x RDX: %x\n", state->regs.rax, state->regs.rbx, state->regs.rcx, state->regs.rdx);
+        k_printf("RSI:  %x RDI: %x RBP: %x R8:  %x\n", state->regs.rsi, state->regs.rdi, state->regs.rbp, state->regs.r8);
+        k_printf("R9:   %x R10: %x R11: %x R12: %x\n", state->regs.r9, state->regs.r10, state->regs.r11, state->regs.r12);
+        while(true) asm("hlt");
+    }
 }
 
 void idt_createEntry(uint8_t i, void (*handler)(), uint8_t selector, uint8_t flags){
@@ -22,7 +33,6 @@ void idt_createEntry(uint8_t i, void (*handler)(), uint8_t selector, uint8_t fla
 
 extern void idt_flush(idt_ptr_t *ptr);
 int int_init(){
-
     outb(0x20, 0x11);
     outb(0xA0, 0x11);
     outb(0x21, 0x20);
@@ -31,49 +41,43 @@ int int_init(){
     outb(0xA1, 0x02);
     outb(0x21, 0x01);
     outb(0xA1, 0x01);
-    outb(0x21, 0xff);
-    outb(0xA1, 0xff);
+    outb(0x21, 0x0);
+    outb(0xA1, 0x0);
 
     memset(&idt, 0, sizeof(idt_t));
 
-    idt.ptr.limit = (sizeof(idt_descriptor_t) * 256) - 1;
-    idt.ptr.offset = (uintptr_t)(&idt.entries[0]);
-    idt_ptr_t *iptr = &idt.ptr;
-
-    idt_flush(iptr);
-
-    idt_createEntry(0, _isr0, 0x08, 0x8E);
-    idt_createEntry(1, _isr1, 0x08, 0x8E);
-    idt_createEntry(2, _isr2, 0x08, 0x8E);
-    idt_createEntry(3, _isr3, 0x08, 0x8E);
-    idt_createEntry(4, _isr4, 0x08, 0x8E);
-    idt_createEntry(5, _isr5, 0x08, 0x8E);
-    idt_createEntry(6, _isr6, 0x08, 0x8E);
-    idt_createEntry(7, _isr7, 0x08, 0x8E);
-    idt_createEntry(8, _isr8, 0x08, 0x8E);
-    idt_createEntry(9, _isr9, 0x08, 0x8E);
-    idt_createEntry(10, _isr10, 0x08, 0x8E);
-    idt_createEntry(11, _isr11, 0x08, 0x8E);
-    idt_createEntry(12, _isr12, 0x08, 0x8E);
-    idt_createEntry(13, _isr13, 0x08, 0x8E);
-    idt_createEntry(14, _isr14, 0x08, 0x8E);
-    idt_createEntry(15, _isr15, 0x08, 0x8E);
-    idt_createEntry(16, _isr16, 0x08, 0x8E);
-    idt_createEntry(17, _isr17, 0x08, 0x8E);
-    idt_createEntry(18, _isr18, 0x08, 0x8E);
-    idt_createEntry(19, _isr19, 0x08, 0x8E);
-    idt_createEntry(20, _isr20, 0x08, 0x8E);
-    idt_createEntry(21, _isr21, 0x08, 0x8E);
-    idt_createEntry(22, _isr22, 0x08, 0x8E);
-    idt_createEntry(23, _isr23, 0x08, 0x8E);
-    idt_createEntry(24, _isr24, 0x08, 0x8E);
-    idt_createEntry(25, _isr25, 0x08, 0x8E);
-    idt_createEntry(26, _isr26, 0x08, 0x8E);
-    idt_createEntry(27, _isr27, 0x08, 0x8E);
-    idt_createEntry(28, _isr28, 0x08, 0x8E);
-    idt_createEntry(29, _isr29, 0x08, 0x8E);
-    idt_createEntry(30, _isr30, 0x08, 0x8E);
-    idt_createEntry(31, _isr31, 0x08, 0x8E);
+    idt_createEntry(0, _isr0, 0x08,   0x8F);
+    idt_createEntry(1, _isr1, 0x08,   0x8F);
+    idt_createEntry(2, _isr2, 0x08,   0x8F);
+    idt_createEntry(3, _isr3, 0x08,   0x8F);
+    idt_createEntry(4, _isr4, 0x08,   0x8F);
+    idt_createEntry(5, _isr5, 0x08,   0x8F);
+    idt_createEntry(6, _isr6, 0x08,   0x8F);
+    idt_createEntry(7, _isr7, 0x08,   0x8F);
+    idt_createEntry(8, _isr8, 0x08,   0x8F);
+    idt_createEntry(9, _isr9, 0x08,   0x8F);
+    idt_createEntry(10, _isr10, 0x08, 0x8F);
+    idt_createEntry(11, _isr11, 0x08, 0x8F);
+    idt_createEntry(12, _isr12, 0x08, 0x8F);
+    idt_createEntry(13, _isr13, 0x08, 0x8F);
+    idt_createEntry(14, _isr14, 0x08, 0x8F);
+    idt_createEntry(15, _isr15, 0x08, 0x8F);
+    idt_createEntry(16, _isr16, 0x08, 0x8F);
+    idt_createEntry(17, _isr17, 0x08, 0x8F);
+    idt_createEntry(18, _isr18, 0x08, 0x8F);
+    idt_createEntry(19, _isr19, 0x08, 0x8F);
+    idt_createEntry(20, _isr20, 0x08, 0x8F);
+    idt_createEntry(21, _isr21, 0x08, 0x8F);
+    idt_createEntry(22, _isr22, 0x08, 0x8F);
+    idt_createEntry(23, _isr23, 0x08, 0x8F);
+    idt_createEntry(24, _isr24, 0x08, 0x8F);
+    idt_createEntry(25, _isr25, 0x08, 0x8F);
+    idt_createEntry(26, _isr26, 0x08, 0x8F);
+    idt_createEntry(27, _isr27, 0x08, 0x8F);
+    idt_createEntry(28, _isr28, 0x08, 0x8F);
+    idt_createEntry(29, _isr29, 0x08, 0x8F);
+    idt_createEntry(30, _isr30, 0x08, 0x8F);
+    idt_createEntry(31, _isr31, 0x08, 0x8F);
     idt_createEntry(32, _irq0, 0x08, 0x8E);
     idt_createEntry(33, _irq1, 0x08, 0x8E);
     idt_createEntry(34, _irq2, 0x08, 0x8E);
@@ -299,7 +303,14 @@ int int_init(){
     idt_createEntry(254, _irq222, 0x08, 0x8E);
     idt_createEntry(255, _irq223, 0x08, 0x8E);
 
+    idt.ptr.limit = (sizeof(idt_descriptor_t) * 256) - 1;
+    idt.ptr.offset = (uintptr_t)(&idt);
+
+    asm volatile("lidtq %0":: "m"(idt.ptr));
+    asm volatile("sti");
+
     k_printf("Setup interrupts\n");
+
     return 0;
 }
 
@@ -311,3 +322,5 @@ module_name(interrupt);
 
 module_load(int_init);
 module_unload(int_fini);
+
+module_depends(gdt);

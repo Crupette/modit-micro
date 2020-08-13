@@ -11,33 +11,35 @@ struct idt_descr32 {
     uint8_t zero;
     uint8_t type_attr;
     uint16_t offset_2;
-};
+}__attribute__((packed));
 
 struct idt_descr64 {
     struct idt_descr32 lower;
     uint32_t offset_3;
     uint32_t zero;
-};
+}__attribute__((packed));
 
 struct idt_ptr32 {
     uint16_t limit;
     uint32_t offset;
-};
+}__attribute__((packed));
 
 struct idt_ptr64 {
     uint16_t limit;
     uint64_t offset;
-};
+}__attribute__((packed));
 
 struct int_state32 {
     registers_t regs;
-    uint32_t err, num, ret, cs, rflg, esp, ss;
-};
+    uint32_t num, err;
+    uint32_t ret, cs, rflg, esp, ss;
+}__attribute__((packed));
 
 struct int_state64 {
     registers_t regs;
-    uint64_t err, num, ret, cs, rflg, rsp, ss;
-};
+    uint64_t num, err;
+    uint64_t ret, cs, rflg, rsp, ss;
+}__attribute__((packed));
 
 #if defined(BITS_64)
 typedef struct idt_descr64 idt_descriptor_t;
