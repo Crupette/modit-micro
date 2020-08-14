@@ -14,7 +14,7 @@ ASM		:= nasm -f elf64
 LD		:= $(ROOT)/tools/bin/$(TARGET)-pc-modit-ld
 CC		:= $(ROOT)/tools/bin/$(TARGET)-pc-modit-gcc
 
-OUT		:= gdt.ko
+OUT		:= irq.ko
 
 all: $(OBJS)
 	$(LD) -r $^ -o $(OUT)

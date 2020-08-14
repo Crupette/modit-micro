@@ -4,6 +4,7 @@
 *.a
 *.swp
 *.swo
+*.ini
 root/usr/include/kernel
 root/boot/kernel.bin
 root/boot/initrd.tar
@@ -11,6 +12,8 @@ initrd/*
 
 iso/boot/modit.bin
 iso/boot/initrd.tar
+
+run/bochslog
 
 tools/*
 *.iso
