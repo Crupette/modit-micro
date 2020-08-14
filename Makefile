@@ -20,6 +20,8 @@ ENVFLAGS	:=
 ifeq ($(ARCH),x86)
 	ENVFLAGS += -DBITS_32
 	ENVFLAGS += -DARCH_I386
+	MODS	+= $(wildcard $(MODDIR)/arch/i686/*/.)
+	TARGET	= i686
 endif
 ifeq ($(ARCH),x64)
 	ENVFLAGS += -DBITS_64
