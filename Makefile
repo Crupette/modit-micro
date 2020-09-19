@@ -67,7 +67,7 @@ kernel: | tools/
 	cp $(KRNLDIR)/kernel.bin root/boot/kernel.bin
 
 initrd: mods | Makefile tools/
-	cd initrd ; tar -cvf ../root/boot/initrd.tar *
+	#cd initrd ; tar -cvf ../root/boot/initrd.tar *
 
 mods: $(MODS)
 $(MODS) : Makefile tools/
